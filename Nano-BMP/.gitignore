@@ -1,0 +1,13 @@
+build
+bin
+CMakeFiles
+CMakeCache.txt
+*.o
+*.so
+*.so.*
+*.a
+*.dll
+*.exe
+*.cmake
+*.swp
+
