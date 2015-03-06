@@ -1,5 +1,8 @@
-#ifndef _jobj_included
-#define _jobj_included
+/**
+ A parser for .sob - the Simple Object Format
+ */
+#ifndef _sob_included
+#define _sob_included
 
 #include <stdio.h>
 #include "geometry.h"

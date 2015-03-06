@@ -1,5 +1,5 @@
-#include "jobj.h"
 #include <stdlib.h>
+#include "sob.h"
 
 void count_objects(FILE *fp, int *vertices, int *edges, int *faces) {
 	char buf[2]; // Need space for a character and a null terminator

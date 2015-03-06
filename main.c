@@ -1,7 +1,8 @@
-#include <stdio.h>
-#include "Nano-BMP/include/nano_bmp.h"
-#include "jobj.h"
+#include "nano-bmp/include/nano_bmp.h"
 #include "geometry.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include "sob.h"
 
 typedef struct {
 	uint8_t r;
@@ -24,7 +25,7 @@ int main(int argc, char** argv) {
 	clear_image(image, black);
 
 	// load .jobj-file
-	FILE *fp = fopen("model.jobj", "r");
+	FILE *fp = fopen("model/fsharp.sob", "r");
 	if (!fp) {
 		fprintf(stderr, "Failed to open model file");
 		return 1;
@@ -46,21 +47,35 @@ void draw_edges(edge edges[], int edge_count, bmp_t *image, rgb_color color) {
 	}
 }
 
+void swap_int(int *a, int *b) {
+	int tmp = *a;
+	*a = *b;
+	*b = tmp;
+}
+
 void draw_line(struct vec3 p1, struct vec3 p2, bmp_t *image, rgb_color color) {
 
-  	// steep is true if height > width
-	int steep = p2.y - p1.y > p2.x - p1.x;
+	// If the line is steep (height > width), we transpose the line, so we can always loop on x-value
+	int steep = abs(p2.y - p1.y) > abs(p2.x - p1.x);
+    if (steep) {
+    	swap_int(&p1.x, &p1.y);
+    	swap_int(&p2.x, &p2.y);
+    }
 
-	if (steep) {
-		for (int y = p1.y; y < p2.y; y++) {
-			float t = (float)(y - p1.y) / (float)(p2.y - p1.y);
-			int x = (p2.x - p1.x) * t + p1.x + 0.5;
-			set_pixel(image, x, y, color.r, color.g, color.b);
-		}
-	} else {
-		for (int x = p1.x; x < p2.x; x++) {
-			float t = (float)(x - p1.x) / (float)(p2.x - p1.x);
-			int y = (p2.y - p1.y) * t + p1.y + 0.5;
+    // Make sure it's drawn left->right
+    if (p2.x <= p1.x) {
+    	swap_int(&p1.x, &p2.x);
+    	swap_int(&p1.y, &p2.y);
+    }
+
+    for (int x = p1.x; x <= p2.x; x++) {
+		float t = (x - p1.x) / (float)(p2.x - p1.x);
+		int y = p1.y * (1.0 - t) + (p1.y * t) + 0.5;
+
+		// De-transpose if needed
+		if (steep) {
+			set_pixel(image, y, x, color.r, color.g, color.b);
+		} else {
 			set_pixel(image, x, y, color.r, color.g, color.b);
 		}
 	}
