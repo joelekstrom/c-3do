@@ -1,6 +1,5 @@
-renderer:
-	clang -o renderer main.c Nano-BMP/src/nano_bmp.c
+renderer: main.c jobj.c
+	clang -o renderer main.c Nano-BMP/src/nano_bmp.c jobj.c
 
 clean:
-	rm output.bmp
-	rm renderer
+	rm output.bmp renderer

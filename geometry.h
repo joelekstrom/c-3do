@@ -8,8 +8,8 @@ typedef struct vec3 {
 } vec3;
 
 typedef struct edge {
-	vec3 v1;
-	vec3 v2;
+	vec3 *v1;
+	vec3 *v2;
 } edge;
 
 #endif

@@ -1,4 +1,6 @@
+#include <stdio.h>
 #include "Nano-BMP/include/nano_bmp.h"
+#include "jobj.h"
 #include "geometry.h"
 
 typedef struct {
@@ -14,45 +16,33 @@ void clear_image(bmp_t *image, rgb_color color);
 
 int main(int argc, char** argv) {
 	bmp_t *image = create_bmp(150, 100, 24);
-	draw_image(image);
-	write_bmp("output.bmp", image);
-	return 0;
-}
-
-void draw_image(bmp_t *image) {
-
+	
 	rgb_color red = {255, 0, 0};
 	rgb_color white = {255, 255, 255};
 	rgb_color black = {0, 0, 0};
 
 	clear_image(image, black);
 
-	vec3 p1 = { 10, 10, 0 };
-	vec3 p2 = { 99, 20, 0 };
-	draw_line(p1, p2, image, white);
+	// load .jobj-file
+	FILE *fp = fopen("model.jobj", "r");
+	if (!fp) {
+		fprintf(stderr, "Failed to open model file");
+		return 1;
+	}
 
-  	// Set up a box
-	vec3 vertices[] = {
-		{10, 10, 0},
-		{90, 10, 0},
-		{10, 90, 0},
-		{90, 90, 0}
-	};
+	struct model_t model = load_model(fp);
+	fclose(fp);
 
-	edge edges[] = {
-		{vertices[0], vertices[1]},
-		{vertices[0], vertices[2]},
-		{vertices[1], vertices[3]},
-		{vertices[2], vertices[3]},
-	};
-
-	draw_edges(edges, 4, image, red);
+	draw_edges(model.edges, model.num_edges, image, red);
+	unload_model(model);
+	write_bmp("output.bmp", image);
+	return 0;
 }
 
 void draw_edges(edge edges[], int edge_count, bmp_t *image, rgb_color color) {
 	for (int i = 0; i < edge_count; i++) {
 		edge e = edges[i];
-		draw_line(e.v1, e.v2, image, color);
+		draw_line(*e.v1, *e.v2, image, color);
 	}
 }
 
