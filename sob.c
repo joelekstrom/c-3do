@@ -4,7 +4,7 @@
 void count_objects(FILE *fp, int *vertices, int *edges, int *faces) {
 	char buf[2]; // Need space for a character and a null terminator
 
-	int num_vertices, num_edges, num_faces = 0;
+	int num_vertices = 0, num_edges = 0, num_faces = 0;
 	while (fgets (buf, sizeof(buf), fp)) {
 		switch (buf[0]) {
 			case 'v':
