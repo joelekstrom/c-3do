@@ -2,7 +2,7 @@
 #include "sob.h"
 
 void count_objects(FILE *fp, int *vertices, int *edges, int *faces) {
-	char buf[2]; // Need space for a character and a null terminator
+	char buf[255];
 
 	int num_vertices = 0, num_edges = 0, num_faces = 0;
 	while (fgets (buf, sizeof(buf), fp)) {
@@ -49,7 +49,7 @@ struct model_t load_model(FILE *fp) {
 	struct model_t model;
 	int num_faces = 0; // Added for future compatibility
 	count_objects(fp, &model.num_vertices, &model.num_edges, &num_faces);
-	printf("Counted %i vertices and %i edges\n", model.num_vertices, model.num_edges);
+	printf("Found %i vertices and %i edges\n", model.num_vertices, model.num_edges);
 	model.vertices = malloc(sizeof(vec3) * model.num_vertices);
 	model.edges = malloc(sizeof(edge) * model.num_edges);
 
