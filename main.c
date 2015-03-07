@@ -12,7 +12,7 @@ typedef struct {
 } rgb_color;
 
 void draw_line(struct vec3 p1, struct vec3 p2, bmp_t *image, rgb_color color);
-void render_mesh(struct model_t model, vec3 translate_2d, bmp_t *image, rgb_color color);
+void render_mesh(struct model_t model, vec3 translation, vec3 view, float perspective, bmp_t *image, rgb_color color);
 void draw_image(bmp_t *image);
 void clear_image(bmp_t *image, rgb_color color);
 
@@ -35,21 +35,25 @@ int main(int argc, char** argv) {
 	struct model_t model = load_model(fp);
 	fclose(fp);
 
+	// Position camera in the middle of the image
+	vec3 view = { image->info.w / 2, image->info.h / 2, 0 };
+	float perspective = 0.0025;
 	vec3 translation = {0, 0, 0};
-	render_mesh(model, translation, image, red);
+
+	render_mesh(model, translation, view, perspective, image, red);
 
 	translation.x = 105;
-	render_mesh(model, translation, image, red);
+	render_mesh(model, translation, view, perspective, image, red);
 
 	translation.x = 170;
 	translation.y = 120;
 	translation.z = 20;
-	render_mesh(model, translation, image, red);
+	render_mesh(model, translation, view, perspective, image, red);
 
 	translation.x = 10;
 	translation.y = 150;
 	translation.z = 80;
-	render_mesh(model, translation, image, red);
+	render_mesh(model, translation, view, perspective, image, red);
 
 	unload_model(model);
 	write_bmp("output.bmp", image);
@@ -59,7 +63,7 @@ int main(int argc, char** argv) {
 /**
  Translates a single vector
  */
-vec3 translate(vec3 v, vec3 translation) {
+static inline vec3 translate(vec3 v, vec3 translation) {
 	v.x = v.x + translation.x;
 	v.y = v.y + translation.y;
 	v.z = v.z + translation.z;
@@ -67,20 +71,17 @@ vec3 translate(vec3 v, vec3 translation) {
 }
 
 /**
- Applies perspective to simulate vector positions in 3D-space.
- camera will is in the middle of the image for now
+ Applies perspective to simulate vector positions in 3D-space, relative to a view position
  */
-vec3 apply_perspective(vec3 v, bmp_t *image) {
-	float perspective = 0.0025;
-	vec3 camera = { image->info.w / 2, image->info.h / 2, 0 };
-	float distance_x = camera.x - v.x;
-	float distance_y = camera.y - v.y;
-	v.x = v.x + v.z * distance_x * perspective;
-	v.y = v.y + v.z * distance_y * perspective;
-	return v;
+static inline vec3 apply_perspective(vec3 position, vec3 view, float amount, bmp_t *image) {
+	float distance_x = view.x - position.x;
+	float distance_y = view.y - position.y;
+	position.x = position.x + position.z * distance_x * amount;
+	position.y = position.y + position.z * distance_y * amount;
+	return position;
 }
 
-void render_mesh(struct model_t model, vec3 translation, bmp_t *image, rgb_color color) {
+void render_mesh(struct model_t model, vec3 translation, vec3 view, float perspective, bmp_t *image, rgb_color color) {
 	for (int i = 0; i < model.num_edges; i++) {
 		edge e = model.edges[i];
 
@@ -89,8 +90,8 @@ void render_mesh(struct model_t model, vec3 translation, bmp_t *image, rgb_color
 		vec3 v2 = translate(*e.v2, translation);
 
 		// Apply perspective so that Z-position is reflected in a 2D image
-		v1 = apply_perspective(v1, image);
-		v2 = apply_perspective(v2, image);
+		v1 = apply_perspective(v1, view, perspective, image);
+		v2 = apply_perspective(v2, view, perspective, image);
 
 		draw_line(v1, v2, image, color);
 	}
