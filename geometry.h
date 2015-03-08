@@ -2,9 +2,9 @@
 #define _geometry_included
 
 typedef struct vec3 {
-	int x;
-	int y;
-	int z;
+	float x;
+	float y;
+	float z;
 } vec3;
 
 typedef struct edge {

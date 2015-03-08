@@ -28,8 +28,8 @@ void count_objects(FILE *fp, int *vertices, int *edges, int *faces) {
 
 vec3 parse_vertex(const char *vertex_str) {
 	vec3 vertex;
-	sscanf(vertex_str, "v %d %d %d", &vertex.x, &vertex.y, &vertex.z);
-	printf("Load vertex (%i, %i, %i)\n", vertex.x, vertex.y, vertex.z);
+	sscanf(vertex_str, "v %f %f %f", &vertex.x, &vertex.y, &vertex.z);
+	printf("Load vertex (%f, %f, %f)\n", vertex.x, vertex.y, vertex.z);
 	return vertex;
 }
 
