@@ -12,4 +12,17 @@ typedef struct edge {
 	vec3 *v2;
 } edge;
 
+typedef struct transform_3d {
+	float sx, ax, bx, tx;
+	float ay, sy, by, ty;
+	float az, bz, sz, tz;
+	float am, bm, cm, dm;
+} transform_3d;
+
+transform_3d transform_3d_identity();
+transform_3d transform_3d_make_translation(float tx, float ty, float sz);
+transform_3d transform_3d_make_scale(float sx, float sy, float sz);
+transform_3d transform_3d_concat(transform_3d t1, transform_3d t2);
+vec3 transform_3d_apply(vec3 v, transform_3d t);
+
 #endif

@@ -12,7 +12,7 @@ typedef struct {
 } rgb_color;
 
 void draw_line(struct vec3 p1, struct vec3 p2, bmp_t *image, rgb_color color);
-void render_mesh(struct model_t model, vec3 translation, vec3 view, float perspective, bmp_t *image, rgb_color color);
+void render_mesh(struct model_t model, transform_3d transform, vec3 view, float perspective, bmp_t *image, rgb_color color);
 void draw_image(bmp_t *image);
 void clear_image(bmp_t *image, rgb_color color);
 
@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
 
 	clear_image(image, black);
 
-	// load .jobj-file
+	// load .sob-file
 	FILE *fp = fopen("model/cube.sob", "r");
 	if (!fp) {
 		fprintf(stderr, "Failed to open model file");
@@ -38,36 +38,24 @@ int main(int argc, char** argv) {
 	// Position camera in the middle of the image
 	vec3 view = { image->info.w / 2, image->info.h / 2, 0 };
 	float perspective = 0.0025;
-	vec3 translation = {0, 0, 0};
 
-	render_mesh(model, translation, view, perspective, image, red);
+	transform_3d identity = transform_3d_identity();
+	render_mesh(model, identity, view, perspective, image, red);
 
-	translation.x = 105;
-	render_mesh(model, translation, view, perspective, image, red);
+	transform_3d scale = transform_3d_make_scale(1.2, 1.2, 1.2);
+	transform_3d translation = transform_3d_make_translation(150, 0, 0);
+	transform_3d scale_and_translate = transform_3d_concat(scale, translation);
+	render_mesh(model, scale_and_translate, view, perspective, image, red);
 
-	translation.x = 170;
-	translation.y = 120;
-	translation.z = 20;
-	render_mesh(model, translation, view, perspective, image, red);
+	transform_3d t = transform_3d_make_translation(170, 140, 20);
+	render_mesh(model, t, view, perspective, image, red);
 
-	translation.x = 10;
-	translation.y = 150;
-	translation.z = 80;
-	render_mesh(model, translation, view, perspective, image, red);
+	t = transform_3d_make_translation(10, 150, 80);
+	render_mesh(model, t, view, perspective, image, red);
 
 	unload_model(model);
 	write_bmp("output.bmp", image);
 	return 0;
-}
-
-/**
- Translates a single vector
- */
-static inline vec3 translate(vec3 v, vec3 translation) {
-	v.x = v.x + translation.x;
-	v.y = v.y + translation.y;
-	v.z = v.z + translation.z;
-	return v;
 }
 
 /**
@@ -81,13 +69,13 @@ static inline vec3 apply_perspective(vec3 position, vec3 view, float amount, bmp
 	return position;
 }
 
-void render_mesh(struct model_t model, vec3 translation, vec3 view, float perspective, bmp_t *image, rgb_color color) {
+void render_mesh(struct model_t model, transform_3d transform, vec3 view, float perspective, bmp_t *image, rgb_color color) {
 	for (int i = 0; i < model.num_edges; i++) {
 		edge e = model.edges[i];
 
-		// Apply any translation
-		vec3 v1 = translate(*e.v1, translation);
-		vec3 v2 = translate(*e.v2, translation);
+		// Apply any transformations
+		vec3 v1 = transform_3d_apply(*e.v1, transform);
+		vec3 v2 = transform_3d_apply(*e.v2, transform);
 
 		// Apply perspective so that Z-position is reflected in a 2D image
 		v1 = apply_perspective(v1, view, perspective, image);
