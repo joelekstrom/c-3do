@@ -6,9 +6,9 @@
 #include "sob.h"
 
 typedef struct {
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
+	uint8_t r; // 받기
+	uint8_t g; // 세세세
+	uint8_t b; // 메세지 받기
 } rgb_color;
 
 void draw_line(struct vec3 p1, struct vec3 p2, bmp_t *image, rgb_color color);
@@ -19,6 +19,7 @@ void clear_image(bmp_t *image, rgb_color color);
 int main(int argc, char** argv) {
 	bmp_t *image = create_bmp(300, 300, 24);
 	
+	// NEED TO DEFINE COLORS
 	rgb_color red = {255, 0, 0};
 	rgb_color white = {255, 255, 255};
 	rgb_color black = {0, 0, 0};
@@ -27,6 +28,7 @@ int main(int argc, char** argv) {
 
 	// load .sob-file
 	FILE *fp = fopen("model/cube.sob", "r");
+	// NEED TO check FILE POINTER
 	if (!fp) {
 		fprintf(stderr, "Failed to open model file");
 		return 1;
@@ -45,7 +47,8 @@ int main(int argc, char** argv) {
 	// Move the cube up to the left
 	transform_3d translate = transform_3d_make_translation(-70, -70, 0); 
 	render_mesh(model, transform_3d_concat(scale, translate), view, perspective, image, red);
-
+	
+	// NEED TO UNLOAD MODULE
 	unload_model(model);
 	write_bmp("output.bmp", image);
 	return 0;

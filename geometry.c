@@ -17,6 +17,7 @@ transform_3d transform_3d_make_translation(float tx, float ty, float tz) {
 	return t;
 }
 
+// NEED TO TRANSFORM SCALE MAKE 3D
 transform_3d transform_3d_make_scale(float sx, float sy, float sz) {
 	transform_3d t = transform_3d_identity();
 	t.sx = sx;

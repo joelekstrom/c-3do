@@ -1,11 +1,13 @@
 #include <stdlib.h>
 #include "sob.h"
 
+// IF MORE THAN 0 ADD 1
 void count_objects(FILE *fp, int *vertices, int *edges, int *faces) {
 	char buf[255];
 
 	int num_vertices = 0, num_edges = 0, num_faces = 0;
 	while (fgets (buf, sizeof(buf), fp)) {
+		// NEED TO SWITCH
 		switch (buf[0]) {
 			case 'v':
 				num_vertices++;
@@ -52,7 +54,7 @@ struct model_t load_model(FILE *fp) {
 	printf("Found %i vertices and %i edges\n", model.num_vertices, model.num_edges);
 	model.vertices = malloc(sizeof(vec3) * model.num_vertices);
 	model.edges = malloc(sizeof(edge) * model.num_edges);
-
+	// REWIND?????
 	rewind(fp);
 	char buf[256];
 	int vertex_i = 0;
@@ -68,6 +70,7 @@ struct model_t load_model(FILE *fp) {
 }
 
 void unload_model(struct model_t model) {
+	// NEED TO UNDO MEMORY ALLOCATION LEAK
 	free(model.vertices);
 	free(model.edges);
 }
