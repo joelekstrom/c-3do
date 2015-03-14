@@ -12,6 +12,7 @@ typedef struct {
 } rgb_color;
 
 void draw_line(struct vec3 p1, struct vec3 p2, bmp_t *image, rgb_color color);
+void fill_triangle(vec2 p1, vec2 p2, vec2 p3, bmp_t *image, rgb_color color);
 void render_mesh(struct model_t model, transform_3d transform, transform_3d view, float perspective, bmp_t *image, rgb_color color);
 void draw_image(bmp_t *image);
 void clear_image(bmp_t *image, rgb_color color);
@@ -45,6 +46,12 @@ int main(int argc, char** argv) {
 	// Move the cube up to the left
 	transform_3d translate = transform_3d_make_translation(-70, -70, 0); 
 	render_mesh(model, transform_3d_concat(scale, translate), view, perspective, image, red);
+
+	// Test drawing of a triangle
+	vec2 a = {30,10};
+	vec2 b = {5,80};
+	vec2 c = {100,100};
+	fill_triangle(a, b, c, image, white);
 
 	unload_model(model);
 	write_bmp("output.bmp", image);
@@ -95,6 +102,39 @@ void swapi(int *a, int *b) {
 	*b = tmp;	
 }
 
+/**
+ Fills a 2D triangle between 3 points, ignoring Z value.
+ Uses the Barycentric algorithm. Slow and steady wins the race, right?
+ */
+void fill_triangle(vec2 p1, vec2 p2, vec2 p3, bmp_t *image, rgb_color color) {
+
+	vec2 vertices[3] = { p1, p2, p3 };
+	float min_x, min_y, max_x, max_y;
+	get_bounding_box_2d(vertices, 3, &min_x, &min_y, &max_x, &max_y);
+
+	// Spanning vectors between p1 and the other points
+	vec2 vs1 = { p2.x - p1.x, p2.y - p1.y };
+	vec2 vs2 = { p3.x - p1.x, p3.y - p1.y };
+
+	for (int x = min_x; x <= max_x + 0.5; x++) {
+		for (int y = min_y; y <= max_y + 0.5; y++) {
+    		vec2 q = { x - p1.x, y - p1.y };
+
+    		// Cross products to get intersections
+    		float s = cross_product_2d(q, vs2) / cross_product_2d(vs1, vs2);
+    		float t = cross_product_2d(vs1, q) / cross_product_2d(vs1, vs2);
+
+    		// Check if point is inside triangle and draw
+    		if ((s >= 0) && (t >= 0) && (s + t <= 1)) {
+      			set_pixel(image, x, y, color.r, color.g, color.b);
+    		}
+  		}
+	}
+}
+
+/**
+ Draws a 2D line between two points, ignoring Z-value
+ */
 void draw_line(struct vec3 p1, struct vec3 p2, bmp_t *image, rgb_color color) {
 
 	// We can only draw integrals, so round the numbers
