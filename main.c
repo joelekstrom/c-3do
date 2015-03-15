@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
 	fill_triangle(a, b, c, image, white);
 
 	unload_model(model);
-	write_bmp("output.bmp", image);
+	write_bmp("bin/output.bmp", image);
 	return 0;
 }
 
