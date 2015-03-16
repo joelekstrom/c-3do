@@ -17,7 +17,7 @@ void render_mesh(struct model_t model, transform_3d transform, transform_3d view
 void draw_image(bmp_t *image);
 void clear_image(bmp_t *image, rgb_color color);
 
-int main(int argc, char** argv) {
+int main() {
 	bmp_t *image = create_bmp(300, 300, 24);
 	
 	rgb_color red = {255, 0, 0};
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
 /**
  Applies perspective to simulate vector positions in 3D-space, relative to a view position
  */
-static inline vec3 apply_perspective(vec3 position, vec3 view_point, float amount, bmp_t *image) {
+static inline vec3 apply_perspective(vec3 position, vec3 view_point, float amount) {
 	float distance_x = view_point.x - position.x;
 	float distance_y = view_point.y - position.y;
 	position.x = position.x + position.z * distance_x * amount;
@@ -83,23 +83,11 @@ void render_mesh(struct model_t model, transform_3d transform, transform_3d view
 		view_point = transform_3d_apply(view_point, view);
 
 		// Apply perspective so that Z-position is reflected in a 2D image
-		v1 = apply_perspective(v1, view_point, perspective, image);
-		v2 = apply_perspective(v2, view_point, perspective, image);
+		v1 = apply_perspective(v1, view_point, perspective);
+		v2 = apply_perspective(v2, view_point, perspective);
 
 		draw_line(v1, v2, image, color);
 	}
-}
-
-void swapf(float *a, float *b) {
-	float tmp = *a;
-	*a = *b;
-	*b = tmp;
-}
-
-void swapi(int *a, int *b) {
-	int tmp = *a;
-	*a = *b;
-	*b = tmp;	
 }
 
 /**
@@ -130,6 +118,12 @@ void fill_triangle(vec2 p1, vec2 p2, vec2 p3, bmp_t *image, rgb_color color) {
     		}
   		}
 	}
+}
+
+void swapf(float *a, float *b) {
+	float tmp = *a;
+	*a = *b;
+	*b = tmp;
 }
 
 /**
