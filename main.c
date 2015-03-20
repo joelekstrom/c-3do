@@ -11,7 +11,7 @@ typedef struct {
 	uint8_t b;
 } rgb_color;
 
-void draw_line(struct vec3 p1, struct vec3 p2, bmp_t *image, rgb_color color);
+void draw_line(vec2 p1, vec2 p2, bmp_t *image, rgb_color color);
 void fill_triangle(vec2 p1, vec2 p2, vec2 p3, bmp_t *image, rgb_color color);
 void render_mesh(struct model_t model, transform_3d transform, transform_3d view, float perspective, bmp_t *image, rgb_color color);
 void draw_image(bmp_t *image);
@@ -61,19 +61,20 @@ int main() {
 /**
  Applies perspective to simulate vector positions in 3D-space, relative to a view position
  */
-static inline vec3 apply_perspective(vec3 position, vec3 view_point, float amount) {
+static inline vec2 apply_perspective(vec3 position, vec3 view_point, float amount) {
 	float distance_x = view_point.x - position.x;
 	float distance_y = view_point.y - position.y;
-	position.x = position.x + position.z * distance_x * amount;
-	position.y = position.y + position.z * distance_y * amount;
-	return position;
+	vec2 result;
+	result.x = position.x + position.z * distance_x * amount;
+	result.y = position.y + position.z * distance_y * amount;
+	return result;
 }
 
 void render_mesh(struct model_t model, transform_3d transform, transform_3d view, float perspective, bmp_t *image, rgb_color color) {
 	for (int i = 0; i < model.num_edges; i++) {
 		edge e = model.edges[i];
 
-		// Position vertices in view and apply any transformations
+		// Position vertices in view and apply any  
 		transform_3d t = transform_3d_concat(transform, view);
 		vec3 v1 = transform_3d_apply(*e.v1, t);
 		vec3 v2 = transform_3d_apply(*e.v2, t);
@@ -83,10 +84,10 @@ void render_mesh(struct model_t model, transform_3d transform, transform_3d view
 		view_point = transform_3d_apply(view_point, view);
 
 		// Apply perspective so that Z-position is reflected in a 2D image
-		v1 = apply_perspective(v1, view_point, perspective);
-		v2 = apply_perspective(v2, view_point, perspective);
+		vec2 p1 = apply_perspective(v1, view_point, perspective);
+		vec2 p2 = apply_perspective(v2, view_point, perspective);
 
-		draw_line(v1, v2, image, color);
+		draw_line(p1, p2, image, color);
 	}
 }
 
@@ -129,7 +130,7 @@ void swapf(float *a, float *b) {
 /**
  Draws a 2D line between two points, ignoring Z-value
  */
-void draw_line(struct vec3 p1, struct vec3 p2, bmp_t *image, rgb_color color) {
+void draw_line(vec2 p1, vec2 p2, bmp_t *image, rgb_color color) {
 
 	// We can only draw integrals, so round the numbers
 	p1.x = (int)(p1.x + 0.5);
