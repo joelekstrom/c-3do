@@ -1,43 +1,39 @@
-#include "nano-bmp/include/nano_bmp.h"
+#include "graphics_context.h"
 #include "geometry.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include "sob.h"
 
-typedef struct {
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
-} rgb_color;
-
-void draw_line(vec2 p1, vec2 p2, bmp_t *image, rgb_color color);
-void fill_triangle(vec2 p1, vec2 p2, vec2 p3, bmp_t *image, rgb_color color);
-void render_mesh(struct model_t model, transform_3d transform, transform_3d view, float perspective, bmp_t *image, rgb_color color);
-void draw_image(bmp_t *image);
-void clear_image(bmp_t *image, rgb_color color);
+void render_mesh(struct model_t model, 
+				 transform_3d transform, 
+				 transform_3d view, 
+				 float perspective, 
+				 struct graphics_context *context, 
+				 rgb_color color);
 
 int main() {
-	bmp_t *image = create_bmp(300, 300, 24);
+	struct graphics_context *context = create_context(BMP_CONTEXT_TYPE, 300, 300);
 	
 	rgb_color red = {255, 0, 0};
 	rgb_color white = {255, 255, 255};
 	rgb_color black = {0, 0, 0};
 
-	clear_image(image, black);
+	clear(context, black);
 
 	// load .sob-file
 	FILE *fp = fopen("model/cube.sob", "r");
 	if (!fp) {
 		fprintf(stderr, "Failed to open model file");
 		return 1;
+		
 	}
 
 	struct model_t model = load_model(fp);
 	fclose(fp);
 
 	// Make sure origin (0, 0) is drawn in the middle of the image
-	transform_3d view = transform_3d_make_translation(image->info.w / 2.0, image->info.h / 2.0, 0.0);
+	transform_3d view = transform_3d_make_translation(context->width / 2, context->height / 2, 0.0);
 	float perspective = 0.0025;
 
 	// We want to scale the cube since its coordinate space goes from -1 to 1
@@ -45,16 +41,17 @@ int main() {
 
 	// Move the cube up to the left
 	transform_3d translate = transform_3d_make_translation(-70, -70, 0); 
-	render_mesh(model, transform_3d_concat(scale, translate), view, perspective, image, red);
+	render_mesh(model, transform_3d_concat(scale, translate), view, perspective, context, red);
 
 	// Test drawing of a triangle
 	vec2 a = {30,10};
 	vec2 b = {5,80};
 	vec2 c = {100,100};
-	fill_triangle(a, b, c, image, white);
 
+	fill_triangle(a, b, c, context, white);
 	unload_model(model);
-	write_bmp("bin/output.bmp", image);
+	bmp_context_save(context, "bin/output.bmp");
+	destroy_context(context);
 	return 0;
 }
 
@@ -70,7 +67,13 @@ static inline vec2 apply_perspective(vec3 position, vec3 view_point, float amoun
 	return result;
 }
 
-void render_mesh(struct model_t model, transform_3d transform, transform_3d view, float perspective, bmp_t *image, rgb_color color) {
+void render_mesh(struct model_t model, 
+				 transform_3d transform, 
+				 transform_3d view, 
+				 float perspective, 
+				 struct graphics_context *context, 
+				 rgb_color color) 
+{
 	for (int i = 0; i < model.num_edges; i++) {
 		edge e = model.edges[i];
 
@@ -87,93 +90,6 @@ void render_mesh(struct model_t model, transform_3d transform, transform_3d view
 		vec2 p1 = apply_perspective(v1, view_point, perspective);
 		vec2 p2 = apply_perspective(v2, view_point, perspective);
 
-		draw_line(p1, p2, image, color);
-	}
-}
-
-/**
- Fills a 2D triangle between 3 points, ignoring Z value.
- Uses the Barycentric algorithm. Slow and steady wins the race, right?
- */
-void fill_triangle(vec2 p1, vec2 p2, vec2 p3, bmp_t *image, rgb_color color) {
-
-	vec2 vertices[3] = { p1, p2, p3 };
-	float min_x, min_y, max_x, max_y;
-	get_bounding_box_2d(vertices, 3, &min_x, &min_y, &max_x, &max_y);
-
-	// Spanning vectors between p1 and the other points
-	vec2 vs1 = { p2.x - p1.x, p2.y - p1.y };
-	vec2 vs2 = { p3.x - p1.x, p3.y - p1.y };
-
-	for (int x = min_x; x <= max_x + 0.5; x++) {
-		for (int y = min_y; y <= max_y + 0.5; y++) {
-    		vec2 q = { x - p1.x, y - p1.y };
-
-    		// Cross products to get intersections
-    		float s = cross_product_2d(q, vs2) / cross_product_2d(vs1, vs2);
-    		float t = cross_product_2d(vs1, q) / cross_product_2d(vs1, vs2);
-
-    		// Check if point is inside triangle and draw
-    		if ((s >= 0) && (t >= 0) && (s + t <= 1)) {
-      			set_pixel(image, x, y, color.r, color.g, color.b);
-    		}
-  		}
-	}
-}
-
-void swapf(float *a, float *b) {
-	float tmp = *a;
-	*a = *b;
-	*b = tmp;
-}
-
-/**
- Draws a 2D line between two points, ignoring Z-value
- */
-void draw_line(vec2 p1, vec2 p2, bmp_t *image, rgb_color color) {
-
-	// We can only draw integrals, so round the numbers
-	p1.x = (int)(p1.x + 0.5);
-	p1.y = (int)(p1.y + 0.5);
-	p2.x = (int)(p2.x + 0.5);
-	p2.y = (int)(p2.y + 0.5);
-
-	// If the line is steep (height > width), we transpose the line, so we can always loop on x-value
-	int steep = abs(p2.y - p1.y) > abs(p2.x - p1.x);
-    if (steep) {
-    	swapf(&p1.x, &p1.y);
-    	swapf(&p2.x, &p2.y);
-    }
-
-    // Make sure it's drawn left->right
-    if (p2.x <= p1.x) {
-    	swapf(&p1.x, &p2.x);
-    	swapf(&p1.y, &p2.y);
-    }
-
-    for (int x = p1.x; x <= p2.x; x++) { // Round to integers by adding 0.5
-		float t = (x - p1.x) / (float)(p2.x - p1.x);
-		int y = p1.y * (1.0 - t) + (p2.y * t) + 0.5;
-
-		if (x < 0) {
-			printf("x is below 0: %i", x);
-		}
-
-		// De-transpose if needed
-		int img_x = steep ? y : x;
-		int img_y = steep ? x : y;
-
-		// Make sure pixel is within bounds
-		if (img_x > 0 && img_x <= image->info.w && img_y > 0 && img_y <= image->info.h) {
-			set_pixel(image, img_x, img_y, color.r, color.g, color.b);
-		}
-	}
-}
-
-void clear_image(bmp_t *image, rgb_color color) {
-	for (int x = 0; x < image->info.w; x++) {
-		for (int y = 0; y < image->info.h; y++) {
-			set_pixel(image, x, y, color.r, color.g, color.b);
-		}
+		draw_line(p1, p2, context, color);
 	}
 }
