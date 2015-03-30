@@ -75,14 +75,14 @@ void flat_bottom_goraud(vec2 top,
 		float t = (y - top.y) / (bottom_left.y - top.y);
 
 		// Calculate left and right points
-		int left_x = bottom_left.x + ((top.x - bottom_left.x) * (1.0 - t)) + 0.5;
-		int width = (bottom_right.x - bottom_left.x) * t + 0.5;
-		int right_x = left_x + width;
+		float left_x = bottom_left.x + ((top.x - bottom_left.x) * (1.0 - t));
+		float width = (bottom_right.x - bottom_left.x) * t;
+		float right_x = left_x + width;
 
 		rgb_color line_left_color = interpolate_color(top_color, left_color, t);
 		rgb_color line_right_color = interpolate_color(top_color, right_color, t);
 
-		for (int x = left_x; x < right_x; x++) {
+		for (int x = (int)(left_x + 0.5); x < (int)(right_x + 0.5); x++) {
 			float tx = (float)(x - left_x) / (float)width;
       		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx));
 		}
