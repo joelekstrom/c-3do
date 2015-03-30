@@ -47,15 +47,10 @@ int main() {
 
 	// Test drawing of a triangle
 	vec2 a = {100,10};
-	vec2 b = {5,180};
-	vec2 c = {240,180};
+	vec2 b = {25,260};
+	vec2 c = {240,260};
 
 	goraud_triangle(a, b, c, red, green, blue, context);
-
-	// Debug, draw actual triangle
-	/*draw_line(a, b, context, white);
-	draw_line(a, c, context, white);
-	draw_line(b, c, context, white);*/
 
 	//fill_triangle(a, b, c, context, white);
 	unload_model(model);
