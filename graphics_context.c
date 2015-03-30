@@ -1,6 +1,7 @@
 #include "graphics_context.h"
 #include "nano-bmp/include/nano_bmp.h"
 #include <stdio.h>
+#include <math.h>
 
 struct graphics_context *create_context(context_type type, int width, int height) {
 	struct graphics_context *context = (struct graphics_context *)malloc(sizeof(struct graphics_context));
@@ -30,8 +31,16 @@ void bmp_context_save(struct graphics_context *context, char name[]) {
 		write_bmp(name, context->_internal);
 	} else {
 		puts("Attempting to save non-bmp context");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
+}
+
+rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value) {
+	rgb_color result;
+	result.r = c1.r + (c2.r - c1.r) * value;
+	result.g = c1.g + (c2.g - c1.g) * value;
+	result.b = c1.b + (c2.b - c1.b) * value;
+	return result;
 }
 
 // ********** Drawing functions **********
@@ -45,12 +54,97 @@ void draw_pixel(int x, int y, struct graphics_context *context, rgb_color color)
 		}
 	} else {
 		puts("Unsupported graphics context");
-		exit(1);	
+		exit(EXIT_FAILURE);	
 	}
 }
 
 /**
- Fills a 2D triangle between 3 points, ignoring Z value.
+ Fills a goraud flat-bottomed triangle. Points/colors need to be sorted before, and
+ bottom_left and bottom_right must have the same y-value, and it must be > top.y
+ */
+void flat_bottom_goraud(vec2 top, 
+						vec2 bottom_left, 
+						vec2 bottom_right, 
+						rgb_color top_color, 
+						rgb_color left_color, 
+						rgb_color right_color, 
+						struct graphics_context *context) 
+{
+	for (int y = top.y; y < bottom_left.y + 0.5; y++) {
+		// Interpolate between top and bottom so we can calculate a line width
+		float t = (y - top.y) / (bottom_left.y - top.y);
+
+		// Calculate left and right points
+		int left_x = bottom_left.x + ((top.x - bottom_left.x) * (1.0 - t)) + 0.5;
+		int width = (bottom_right.x - bottom_left.x) * t + 0.5;
+		int right_x = left_x + width;
+
+		rgb_color line_left_color = interpolate_color(top_color, left_color, t);
+		rgb_color line_right_color = interpolate_color(top_color, right_color, t);
+
+		for (int x = left_x; x < right_x; x++) {
+			float tx = (float)(x - left_x) / (float)width;
+      		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx));
+		}
+	}
+}
+
+/**
+ Fills a goraud triangle (each vertex has a color which interpolates).
+ This function sorts the points/colors and splits the triangle if needed,
+ and then delegates drawing to flat_bottom_goraud()
+ */
+void goraud_triangle(vec2 p1, vec2 p2, vec2 p3, rgb_color c1, rgb_color c2, rgb_color c3, struct graphics_context *context) {
+
+	// We need to find the top, left and right points to make iteration simpler.
+	// If the triangle isn't flat-bottomed we split it into two triangles
+	vec2 *top_point = &p1;
+	vec2 *left_point = NULL;
+	vec2 *right_point = NULL;
+	rgb_color *top_color = &c1;
+	rgb_color *left_color = NULL;
+	rgb_color *right_color = NULL;
+
+	vec2 *points[] = { &p1, &p2, &p3 };
+	rgb_color *colors[] = { &c1, &c2, &c3 };
+
+	// First, find top point
+	for (int i = 1; i < 3; ++i) {
+		vec2 *p = points[i];
+		if (p->y < top_point->y) {
+			top_point = p;
+			top_color = colors[i];
+		}
+	}
+
+	// Then, find left and right point (we don't want them to be the same as top point)
+	for (int i = 0; i < 3; i++) {
+		vec2 *p = points[i];
+		if (p == top_point)
+			continue;
+
+		if (left_point == NULL || p->x < left_point->x) {
+			left_point = p;
+			left_color = colors[i];
+		}
+
+		if (right_point == NULL || p->x > right_point->x) {
+			right_point = p;
+			right_color = colors[i];
+		}
+	}
+
+	// If the y-value of the left and right triangles differ, then the triangle isn't
+	// flat bottomed. In this case we must split it into two triangles
+	if (right_point->y != left_point->y) {
+
+	}  else {
+		flat_bottom_goraud(*top_point, *left_point, *right_point, *top_color, *left_color, *right_color, context);
+	}
+}
+
+/**
+ Fills a 2D triangle between 3 points.
  Uses the Barycentric algorithm. Slow and steady wins the race, right?
  */
 void fill_triangle(vec2 p1, vec2 p2, vec2 p3, struct graphics_context *context, rgb_color color) {

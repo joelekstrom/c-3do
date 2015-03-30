@@ -16,6 +16,8 @@ int main() {
 	struct graphics_context *context = create_context(BMP_CONTEXT_TYPE, 300, 300);
 	
 	rgb_color red = {255, 0, 0};
+	rgb_color green = {0, 255, 0};
+	rgb_color blue = {0, 0, 255};
 	rgb_color white = {255, 255, 255};
 	rgb_color black = {0, 0, 0};
 
@@ -44,11 +46,18 @@ int main() {
 	render_mesh(model, transform_3d_concat(scale, translate), view, perspective, context, red);
 
 	// Test drawing of a triangle
-	vec2 a = {30,10};
-	vec2 b = {5,80};
-	vec2 c = {100,100};
+	vec2 a = {100,10};
+	vec2 b = {5,180};
+	vec2 c = {240,180};
 
-	fill_triangle(a, b, c, context, white);
+	goraud_triangle(a, b, c, red, green, blue, context);
+
+	// Debug, draw actual triangle
+	/*draw_line(a, b, context, white);
+	draw_line(a, c, context, white);
+	draw_line(b, c, context, white);*/
+
+	//fill_triangle(a, b, c, context, white);
 	unload_model(model);
 	bmp_context_save(context, "bin/output.bmp");
 	destroy_context(context);
