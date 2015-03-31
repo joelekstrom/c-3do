@@ -22,8 +22,7 @@ void count_objects(FILE *fp, int *vertices, int *edges, int *faces) {
 	}
 	*vertices = num_vertices;
 	*edges = num_edges;
-	// Add faces when supported
-	// *faces = num_faces;
+	*faces = num_faces;
 }
 
 vec3 parse_vertex(const char *vertex_str) {
@@ -42,26 +41,43 @@ edge parse_edge(const char *edge_str, vec3 vertices[]) {
 	e.v1 = &vertices[v1_i];
 	e.v2 = &vertices[v2_i];
 	printf("Load edge (%i, %i)\n", v1_i, v2_i);
-	return e;	
+	return e;
+}
+
+face parse_face(const char *face_str, vec3 vertices[]) {
+	int v1_i;
+	int v2_i;
+	int v3_i;
+	sscanf(face_str, "f %d %d %d", &v1_i, &v2_i, &v3_i);
+
+	face f;
+	f.v1 = &vertices[v1_i];
+	f.v2 = &vertices[v2_i];
+	f.v3 = &vertices[v3_i];
+	printf("Load face (%i, %i, %i)\n", v1_i, v2_i, v3_i);
+	return f;
 }
 
 struct model_t load_model(FILE *fp) {
 	struct model_t model;
-	int num_faces = 0; // Added for future compatibility
-	count_objects(fp, &model.num_vertices, &model.num_edges, &num_faces);
-	printf("Found %i vertices and %i edges\n", model.num_vertices, model.num_edges);
+	count_objects(fp, &model.num_vertices, &model.num_edges, &model.num_faces);
+	printf("Found %i vertices, %i edges and %i faces...\n", model.num_vertices, model.num_edges, model.num_faces);
 	model.vertices = malloc(sizeof(vec3) * model.num_vertices);
 	model.edges = malloc(sizeof(edge) * model.num_edges);
+	model.faces = malloc(sizeof(face) * model.num_faces);
 
 	rewind(fp);
 	char buf[256];
 	int vertex_i = 0;
 	int edge_i = 0;
+	int face_i = 0;
 	while (fgets (buf, sizeof(buf), fp)) {
 		if (buf[0] == 'v') {
 			model.vertices[vertex_i++] = parse_vertex(buf);
 		} else if (buf[0] == 'e') {
 			model.edges[edge_i++] = parse_edge(buf, model.vertices);
+		} else if (buf[0] == 'f') {
+			model.faces[face_i++] = parse_face(buf, model.vertices);
 		}
 	}
 	return model;
@@ -70,4 +86,5 @@ struct model_t load_model(FILE *fp) {
 void unload_model(struct model_t model) {
 	free(model.vertices);
 	free(model.edges);
+	free(model.faces);
 }

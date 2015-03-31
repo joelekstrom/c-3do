@@ -17,6 +17,12 @@ typedef struct edge {
 	vec3 *v2;
 } edge;
 
+typedef struct face {
+	vec3 *v1;
+	vec3 *v2;
+	vec3 *v3;
+} face;
+
 typedef struct transform_3d {
 	float sx, ax, bx, tx;
 	float ay, sy, by, ty;
