@@ -1,5 +1,5 @@
-#ifndef _geometry_included
-#define _geometry_included
+#ifndef GEOMETRY_H
+#define GEOMETRY_H
 
 typedef struct vec2 {
 	float x;

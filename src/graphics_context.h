@@ -1,3 +1,6 @@
+#ifndef GRAPHICS_CONTEXT_H
+#define GRAPHICS_CONTEXT_H
+
 #include "geometry.h"
 #include <stdlib.h>
 
@@ -26,3 +29,5 @@ void fill_triangle(vec2 p1, vec2 p2, vec2 p3, struct graphics_context *context, 
 void goraud_triangle(vec2 p1, vec2 p2, vec2 p3, rgb_color c1, rgb_color c2, rgb_color c3, struct graphics_context *context);
 void clear(struct graphics_context *context, rgb_color color);
 void bmp_context_save(struct graphics_context *context, char name[]);
+
+#endif
