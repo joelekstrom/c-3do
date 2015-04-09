@@ -1,8 +1,5 @@
-/**
- A parser for .sob - the Simple Object Format
- */
-#ifndef _sob_included
-#define _sob_included
+#ifndef OBJ_H
+#define OBJ_H
 
 #include <stdio.h>
 #include "geometry.h"

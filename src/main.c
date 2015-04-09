@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "sob.h"
+#include "obj.h"
 
 void render_mesh(struct model_t model, 
 				 transform_3d transform, 

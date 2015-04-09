@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "sob.h"
+#include "obj.h"
 
 void count_objects(FILE *fp, int *vertices, int *edges, int *faces) {
 	char buf[255];
