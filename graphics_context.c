@@ -122,10 +122,6 @@ void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color col
 		float t = (x - p1.x) / (float)(p2.x - p1.x);
 		int y = p1.y * (1.0 - t) + (p2.y * t) + 0.5;
 
-		if (x < 0) {
-			printf("x is below 0: %i", x);
-		}
-
 		// De-transpose if needed
 		int img_x = steep ? y : x;
 		int img_y = steep ? x : y;
