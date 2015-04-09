@@ -254,24 +254,22 @@ void goraud_triangle(vec2 p1, vec2 p2, vec2 p3, rgb_color c1, rgb_color c2, rgb_
 
 	// If not, the triangle isn't flat bottomed, which makes it complicated to draw.
 	// In that case, split it into two - one flat top and one flat bottom.
-	if (right_point->y != left_point->y) {
-		if (left_point->y < right_point->y) {
-			vec2 split_point;
-			split_point.y = left_point->y;
-			float t = (left_point->y - top_point->y) / (right_point->y - top_point->y);
-			split_point.x = (right_point->x - top_point->x) * t + top_point->x;
-			rgb_color split_color = interpolate_color(*top_color, *right_color, t);
-			flat_bottom_goraud(*top_point, *left_point, split_point, *top_color, *left_color, split_color, context);
-			flat_top_goraud(*right_point, *left_point, split_point, *right_color, *left_color, split_color, context);
-		} else {
-			vec2 split_point;
-			split_point.y = right_point->y;
-			float t = (right_point->y - top_point->y) / (left_point->y - top_point->y);
-			split_point.x = (top_point->x - left_point->x) * (1.0 - t) + left_point->x;
-			rgb_color split_color = interpolate_color(*top_color, *left_color, t);
-			flat_bottom_goraud(*top_point, split_point, *right_point, *top_color, split_color, *right_color, context);
-			flat_top_goraud(*left_point, split_point, *right_point, *left_color, split_color, *right_color, context);
-		}
+	if (left_point->y < right_point->y) {
+		vec2 split_point;
+		split_point.y = left_point->y;
+		float t = (left_point->y - top_point->y) / (right_point->y - top_point->y);
+		split_point.x = (right_point->x - top_point->x) * t + top_point->x;
+		rgb_color split_color = interpolate_color(*top_color, *right_color, t);
+		flat_bottom_goraud(*top_point, *left_point, split_point, *top_color, *left_color, split_color, context);
+		flat_top_goraud(*right_point, *left_point, split_point, *right_color, *left_color, split_color, context);
+	} else {
+		vec2 split_point;
+		split_point.y = right_point->y;
+		float t = (right_point->y - top_point->y) / (left_point->y - top_point->y);
+		split_point.x = (top_point->x - left_point->x) * (1.0 - t) + left_point->x;
+		rgb_color split_color = interpolate_color(*top_color, *left_color, t);
+		flat_bottom_goraud(*top_point, split_point, *right_point, *top_color, split_color, *right_color, context);
+		flat_top_goraud(*left_point, split_point, *right_point, *left_color, split_color, *right_color, context);
 	}
 }
 
