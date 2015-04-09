@@ -106,7 +106,7 @@ void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color col
 	p2.y = (int)(p2.y + 0.5);
 
 	// If the line is steep (height > width), we transpose the line, so we can always loop on x-value
-	int steep = abs(p2.y - p1.y) > abs(p2.x - p1.x);
+	int steep = fabsf(p2.y - p1.y) > fabsf(p2.x - p1.x);
     if (steep) {
     	swapf(&p1.x, &p1.y);
     	swapf(&p2.x, &p2.y);
