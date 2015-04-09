@@ -1,0 +1,3 @@
+[submodule "lib/Nano-BMP"]
+	path = lib/Nano-BMP
+	url = https://github.com/Twinklebear/Nano-BMP.git
