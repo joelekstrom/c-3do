@@ -10,7 +10,7 @@ struct graphics_context *create_context(context_type type, int width, int height
 	context->height = height;
 
 	if (type == BMP_CONTEXT_TYPE) {
-		bmp_t *image = create_bmp(300, 300, 24);
+		bmp_t *image = create_bmp(width, height, 24);
 		context->_internal = image;
 	} else {
 		puts("Unsupported graphics context");

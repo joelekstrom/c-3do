@@ -1,90 +1,113 @@
 #include <stdlib.h>
+#include <string.h>
 #include "obj.h"
 
-void count_objects(FILE *fp, int *vertices, int *edges, int *faces) {
-	char buf[255];
-
-	int num_vertices = 0, num_edges = 0, num_faces = 0;
-	while (fgets (buf, sizeof(buf), fp)) {
-		switch (buf[0]) {
-			case 'v':
-				num_vertices++;
-				break;
-
-			case 'e':
-				num_edges++;
-				break;
-
-			case 'f':
-				num_faces++;
-				break;
-		}
-	}
-	*vertices = num_vertices;
-	*edges = num_edges;
-	*faces = num_faces;
-}
-
-vec3 parse_vertex(const char *vertex_str) {
+vec3 parse_vertex(FILE *fp) {
 	vec3 vertex;
-	sscanf(vertex_str, "v %f %f %f", &vertex.x, &vertex.y, &vertex.z);
-	printf("Load vertex (%f, %f, %f)\n", vertex.x, vertex.y, vertex.z);
+	fscanf(fp, "%f %f %f", &vertex.x, &vertex.y, & vertex.z);
 	return vertex;
 }
 
-edge parse_edge(const char *edge_str, vec3 vertices[]) {
-	int v1_i;
-	int v2_i;
-	sscanf(edge_str, "e %d %d", &v1_i, &v2_i);
+struct face parse_face(FILE *fp, vec3 *vertices, vec3 *normals, vec3 *textures) {
+	struct face f;
 
-	edge e;
-	e.v1 = &vertices[v1_i];
-	e.v2 = &vertices[v2_i];
-	printf("Load edge (%i, %i)\n", v1_i, v2_i);
-	return e;
+	// A face consists of 3 tokens (one for each corner), so we need to consume all of them
+	for (int i = 0; i < 3; ++i) {
+		f.vertices[i] = NULL; f.normals[i] = NULL; f.textures[i] = NULL;
+		int vertex_index = -1;
+		int texture_index = -1;
+		int normal_index = -1;
+
+		char token[256];
+		fscanf(fp, "%s", token);
+
+		// .obj doesn't require normals or textures in faces, so we need to check all possible cases
+		if (sscanf(token, "%i/%i/%i", &vertex_index, &texture_index, &normal_index) == 3) {
+			f.vertices[i] = &vertices[vertex_index];
+			f.normals[i] = &normals[normal_index];
+			f.textures[i] = &textures[texture_index];
+		} else if (sscanf(token, "%i//%i", &vertex_index, &normal_index) == 2) {
+			f.vertices[i] = &vertices[vertex_index];
+			f.normals[i] = &normals[normal_index];
+		} else if (sscanf(token, "%i/%i", &vertex_index, &texture_index) == 2) {
+			f.vertices[i] = &vertices[vertex_index];
+			f.textures[i] = &textures[texture_index];
+		} else if (sscanf(token, "%i", &vertex_index) == 1) {
+			f.vertices[i] = &vertices[vertex_index];
+		}
+	}
+
+	return f;
 }
 
-face parse_face(const char *face_str, vec3 vertices[]) {
-	int v1_i;
-	int v2_i;
-	int v3_i;
-	sscanf(face_str, "f %d %d %d", &v1_i, &v2_i, &v3_i);
+/**
+ Increases the size of an array if needed, using realloc(). If the current count is equal to the
+ max count, it will double the size.
 
-	face f;
-	f.v1 = &vertices[v1_i];
-	f.v2 = &vertices[v2_i];
-	f.v3 = &vertices[v3_i];
-	printf("Load face (%i, %i, %i)\n", v1_i, v2_i, v3_i);
-	return f;
+ Returns the new size, or the old size if nothing was done.
+ */
+int increase_size_if_needed(void **ptr, size_t object_size, int current_count, int max_count) {
+	if (current_count == max_count) {
+		int new_size = max_count * 2;
+		*ptr = realloc(*ptr, new_size * object_size);
+		return new_size;
+	}
+	return max_count;
 }
 
 struct model_t load_model(FILE *fp) {
 	struct model_t model;
-	count_objects(fp, &model.num_vertices, &model.num_edges, &model.num_faces);
-	printf("Found %i vertices, %i edges and %i faces...\n", model.num_vertices, model.num_edges, model.num_faces);
-	model.vertices = malloc(sizeof(vec3) * model.num_vertices);
-	model.edges = malloc(sizeof(edge) * model.num_edges);
-	model.faces = malloc(sizeof(face) * model.num_faces);
+	model.num_vertices = 0;
+	model.num_normals = 0;
+	model.num_faces = 0;
+	model.num_textures = 0;
+
+	// Start by allocating space for 4 of each object, we will realloc later if needed
+	int vertex_array_size = 4; 
+	int normal_array_size = 4; 
+	int face_array_size = 4;
+	int texture_array_size = 4;
+	model.vertices = malloc(sizeof(vec3) * vertex_array_size);
+	model.normals = malloc(sizeof(vec3) * normal_array_size);
+	model.faces = malloc(sizeof(struct face) * face_array_size);
+	model.textures = malloc(sizeof(vec3) * texture_array_size);
 
 	rewind(fp);
-	char buf[256];
-	int vertex_i = 0;
-	int edge_i = 0;
-	int face_i = 0;
-	while (fgets (buf, sizeof(buf), fp)) {
-		if (buf[0] == 'v') {
-			model.vertices[vertex_i++] = parse_vertex(buf);
-		} else if (buf[0] == 'e') {
-			model.edges[edge_i++] = parse_edge(buf, model.vertices);
-		} else if (buf[0] == 'f') {
-			model.faces[face_i++] = parse_face(buf, model.vertices);
+	char token[256];
+	while (fscanf(fp, "%s", token) != EOF) {
+
+		// Vertex
+		if (strcmp(token, "v") == 0) {
+			vertex_array_size = increase_size_if_needed((void **)&model.vertices, sizeof(vec3), model.num_vertices, vertex_array_size);
+			model.vertices[model.num_vertices++] = parse_vertex(fp);
+
+		} 
+
+		// Vertex normal
+		else if (strcmp(token, "vn") == 0) {
+			normal_array_size = increase_size_if_needed((void **)&model.normals, sizeof(vec3), model.num_normals, normal_array_size);
+			model.normals[model.num_normals++] = parse_vertex(fp);
+		} 
+
+		// Vertex texture
+		else if (strcmp(token, "vt") == 0) {
+			// Not yet implemented
+		}
+
+		// Face
+		else if (strcmp(token, "f") == 0) {
+			face_array_size = increase_size_if_needed((void **)&model.faces, sizeof(struct face), model.num_faces, face_array_size);
+			model.faces[model.num_faces++] = parse_face(fp, model.vertices, model.normals, model.textures);
 		}
 	}
+
+	printf("Loaded %i vertices, %i normals and %i faces.\n", model.num_vertices, model.num_normals, model.num_faces);
+
 	return model;
 }
 
 void unload_model(struct model_t model) {
 	free(model.vertices);
-	free(model.edges);
+	free(model.normals);
 	free(model.faces);
 }
