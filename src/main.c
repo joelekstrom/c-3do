@@ -12,7 +12,7 @@ rgb_color white = {255, 255, 255};
 rgb_color yellow = {255, 255, 0};
 rgb_color black = {0, 0, 0};
 
-void render_mesh(struct model_t model, 
+void render_mesh(struct model model, 
 				 transform_3d transform, 
 				 transform_3d view, 
 				 float perspective, 
@@ -31,7 +31,7 @@ int main() {
 		return 1;
 	}
 
-	struct model_t model = load_model(fp);
+	struct model model = load_model(fp);
 	fclose(fp);
 
 	// Make sure origin (0, 0) is drawn in the middle of the image
@@ -62,7 +62,7 @@ static inline vec2 apply_perspective(vec3 position, vec3 view_point, float amoun
 	return result;
 }
 
-void render_mesh(struct model_t model, 
+void render_mesh(struct model model, 
 				 transform_3d transform, 
 				 transform_3d view, 
 				 float perspective, 

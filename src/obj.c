@@ -55,8 +55,8 @@ int increase_size_if_needed(void **ptr, size_t object_size, int current_count, i
 	return max_count;
 }
 
-struct model_t load_model(FILE *fp) {
-	struct model_t model;
+struct model load_model(FILE *fp) {
+	struct model model;
 	model.num_vertices = 0;
 	model.num_normals = 0;
 	model.num_faces = 0;
@@ -106,7 +106,7 @@ struct model_t load_model(FILE *fp) {
 	return model;
 }
 
-void unload_model(struct model_t model) {
+void unload_model(struct model model) {
 	free(model.vertices);
 	free(model.normals);
 	free(model.faces);

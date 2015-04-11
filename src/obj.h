@@ -10,7 +10,7 @@ struct face {
 	vec3 *textures[3];
 };
 
-struct model_t {
+struct model {
 	int num_vertices;
 	int num_normals;
 	int num_textures;
@@ -22,7 +22,7 @@ struct model_t {
 	struct face *faces;
 };
 
-struct model_t load_model(FILE *fp);
-void unload_model(struct model_t model);
+struct model load_model(FILE *fp);
+void unload_model(struct model model);
 
 #endif
