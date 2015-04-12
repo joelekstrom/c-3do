@@ -23,17 +23,17 @@ struct face parse_face(FILE *fp, vec3 *vertices, vec3 *normals, vec3 *textures) 
 
 		// .obj doesn't require normals or textures in faces, so we need to check all possible cases
 		if (sscanf(token, "%i/%i/%i", &vertex_index, &texture_index, &normal_index) == 3) {
-			f.vertices[i] = &vertices[vertex_index];
-			f.normals[i] = &normals[normal_index];
-			f.textures[i] = &textures[texture_index];
+			f.vertices[i] = &vertices[vertex_index - 1];
+			f.normals[i] = &normals[normal_index - 1];
+			f.textures[i] = &textures[texture_index - 1];
 		} else if (sscanf(token, "%i//%i", &vertex_index, &normal_index) == 2) {
-			f.vertices[i] = &vertices[vertex_index];
-			f.normals[i] = &normals[normal_index];
+			f.vertices[i] = &vertices[vertex_index - 1];
+			f.normals[i] = &normals[normal_index - 1];
 		} else if (sscanf(token, "%i/%i", &vertex_index, &texture_index) == 2) {
-			f.vertices[i] = &vertices[vertex_index];
-			f.textures[i] = &textures[texture_index];
+			f.vertices[i] = &vertices[vertex_index - 1];
+			f.textures[i] = &textures[texture_index - 1];
 		} else if (sscanf(token, "%i", &vertex_index) == 1) {
-			f.vertices[i] = &vertices[vertex_index];
+			f.vertices[i] = &vertices[vertex_index - 1];
 		}
 	}
 
