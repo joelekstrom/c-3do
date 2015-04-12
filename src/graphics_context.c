@@ -77,8 +77,9 @@ void fill_triangle(vec2 p1, vec2 p2, vec2 p3, struct graphics_context *context, 
     		vec2 q = { x - p1.x, y - p1.y };
 
     		// Cross products to get intersections
-    		float s = cross_product_2d(q, vs2) / cross_product_2d(vs1, vs2);
-    		float t = cross_product_2d(vs1, q) / cross_product_2d(vs1, vs2);
+    		 // return v1.x * v2.y - v1.y * v2.x;
+    		float s = (q.x * vs2.y - q.y * vs2.x) / (vs1.x * vs2.y - vs1.y * vs2.x);
+    		float t = (vs1.x * q.y - vs1.y * q.x) / (vs1.x * vs2.y - vs1.y * vs2.x);
 
     		// Check if point is inside triangle and draw
     		if ((s >= 0) && (t >= 0) && (s + t <= 1)) {

@@ -1,8 +1,51 @@
 #include "geometry.h"
 #include <stdlib.h>
+#include <math.h>
 
-float cross_product_2d(vec2 v1, vec2 v2) {
-	return v1.x * v2.y - v1.y * v2.x;
+float dot_product_2d(vec2 v1, vec2 v2) {
+	return v1.x * v2.x + v1.y * v2.y;
+}
+
+float dot_product_3d(vec3 v1, vec3 v2) {
+	return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
+vec3 cross_product(vec3 v1, vec3 v2) {
+	vec3 result;
+	result.x = v1.y * v2.z - v1.z * v2.y;
+	result.y = v1.z * v2.x - v1.x * v2.z;
+	result.z = v1.x * v2.y - v1.y * v2.x;
+	return result;
+}
+
+vec3 vec3_unit(vec3 v) {
+	float length = sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+	vec3 result = {v.x / length, v.y / length, v.z / length};
+	return result;
+}
+
+vec3 vec3_subtract(vec3 v1, vec3 v2) {
+	vec3 result;
+	result.x = v1.x - v2.x;
+	result.y = v1.y - v2.y;
+	result.z = v1.z - v2.z;
+	return result;
+}
+
+vec3 vec3_add(vec3 v1, vec3 v2) {
+	vec3 result;
+	result.x = v1.x + v2.x;
+	result.y = v1.y + v2.y;
+	result.z = v1.z + v2.z;
+	return result;
+}
+
+vec3 vec3_neg(vec3 v) {
+	vec3 result;
+	result.x = -v.x;
+	result.y = -v.y;
+	result.z = -v.z;
+	return result;
 }
 
 transform_3d transform_3d_identity() {
