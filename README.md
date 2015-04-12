@@ -1,24 +1,11 @@
 # c-3do
-A small software renderer in C
+A small software renderer in C.
+
+This is a personal project to learn more about computer graphics. The goal: from using only a function to set the color of a single pixel, implement everything needed to render 3D-models.
 
 ## Models
-c-3do loads models from .sob files (Simple Object Format), which look like this:
+c-3do loads models in the [Wavefront .obj-format](http://en.wikipedia.org/wiki/Wavefront_.obj_file).
 
-```
-// 2d box example
-v 10.0 10.0 0.0
-v 90.0 10.0 0.0
-v 10.0 90.0 0.0
-v 90.0 90.9 0.0
-
-e 0 1
-e 0 2
-e 2 3
-e 1 3
-```
-
-Lines starting with `v` defines vertices in 3D-space, lines starting with `e` defines edges between vertices.
-The arguments for `e` is the vertex index. All vertices in an edge must be defined before the edge itself.
-
-The above model does not contain any faces. A face is constructed from 3 vertices - and is defined by lines starting with `f`.
-Normals cannot be defined but will be automatically calculated from a face (clockwise vertice order).
+## Progress images
+![Goraud triangle](http://i.imgur.com/bgANjBA.png)
+![Flat shading](http://i.imgur.com/2qTsmjt.png)
