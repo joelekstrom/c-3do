@@ -153,6 +153,10 @@ void flat_bottom_goraud(vec2 top,
 						rgb_color right_color, 
 						struct graphics_context *context) 
 {
+
+	// There's a bug in this function with the following values
+	// top=(x = 465.574036, y = 131.912537), bottom_left=(x = 442.840851, y = 131.913513), bottom_right=(x = 465.574127, y = 131.913513)
+
 	for (int y = top.y; y < bottom_left.y + 0.5; y++) {
 		// Interpolate between top and bottom so we can calculate a line width
 		float t = (y - top.y) / (bottom_left.y - top.y);
@@ -175,12 +179,12 @@ void flat_bottom_goraud(vec2 top,
 /**
  Same as above but inverted
  */
-void flat_top_goraud(vec2 bottom, 
-					 vec2 top_left, 
+void flat_top_goraud(vec2 top_left, 
 					 vec2 top_right, 
-					 rgb_color bottom_color, 
+					 vec2 bottom,
 					 rgb_color left_color, 
 					 rgb_color right_color, 
+					 rgb_color bottom_color,
 					 struct graphics_context *context) 
 {
 	for (int y = bottom.y; y > top_left.y + 0.5; y--) {
@@ -203,74 +207,84 @@ void flat_top_goraud(vec2 bottom,
 }
 
 /**
+ A "tuple" which associates a vector with a color. Comparing functions
+ below so we can sort tuples easily top > left > right
+ */
+struct point {
+	vec2 *p;
+	rgb_color *color;
+};
+
+int compare_points_x(const void *a, const void *b) {
+	struct point *p1 = (struct point *)a;
+	struct point *p2 = (struct point *)b;
+	if (p1->p->x < p2->p->x) return -1;
+	if (p1->p->x > p2->p->x) return 1;
+	return 0;
+}
+
+int compare_points_y(const void *a, const void *b) {
+	struct point *p1 = (struct point *)a;
+	struct point *p2 = (struct point *)b;
+	if (p1->p->y < p2->p->y) return -1;
+	if (p1->p->y > p2->p->y) return 1;
+	return 0;
+}
+
+int compare_points(const void *a, const void *b) {
+	int cmp_y = compare_points_y(a, b);
+	if (cmp_y != 0)
+		return cmp_y;
+	return compare_points_x(a, b);
+}
+
+/**
  Fills a goraud triangle (each vertex has a color which interpolates).
  This function sorts the points/colors and splits the triangle if needed,
- and then delegates drawing to flat_bottom_goraud()
+ and then delegates drawing to flat_top/flat_bottom_goraud
  */
 void goraud_triangle(vec2 p1, vec2 p2, vec2 p3, rgb_color c1, rgb_color c2, rgb_color c3, struct graphics_context *context) {
 
-	// We need to find the top, left and right points to make iteration simpler.
-	// If the triangle isn't flat-bottomed we split it into two triangles
-	vec2 *top_point = &p1;
-	vec2 *left_point = NULL;
-	vec2 *right_point = NULL;
-	rgb_color *top_color = &c1;
-	rgb_color *left_color = NULL;
-	rgb_color *right_color = NULL;
-
-	vec2 *points[] = { &p1, &p2, &p3 };
+	// Build an array of points
+	vec2 *vectors[] = { &p1, &p2, &p3 };
 	rgb_color *colors[] = { &c1, &c2, &c3 };
+	struct point points[3];
 
-	// First, find top point
-	for (int i = 1; i < 3; ++i) {
-		vec2 *p = points[i];
-		if (p->y < top_point->y) {
-			top_point = p;
-			top_color = colors[i];
-		}
+	for (int i = 0; i < 3; ++i) {
+		struct point point;
+		point.p = vectors[i];
+		point.color = colors[i];
+		points[i] = point;
 	}
 
-	// Then, find left and right point (we don't want them to be the same as top point)
-	for (int i = 0; i < 3; i++) {
-		vec2 *p = points[i];
-		if (p == top_point)
-			continue;
+	// Sort it top->left->right
+	qsort(&points, 3, sizeof(struct point), &compare_points);
 
-		if (left_point == NULL || p->x < left_point->x) {
-			left_point = p;
-			left_color = colors[i];
-		}
+	// If the y-value of the first and second points are the same, we have a flat-top triangle
+	if (compare_points_y(&points[0], &points[1]) == 0) {
+		flat_top_goraud(*points[0].p, *points[1].p, *points[2].p, *points[0].color, *points[1].color, *points[2].color, context);
+	} 
 
-		if (right_point == NULL || p->x > right_point->x) {
-			right_point = p;
-			right_color = colors[i];
-		}
-	}
+	// ... And if the second and third have the same y-value, we have a flat-bottom triangle
+	else if (compare_points_y(&points[1], &points[2]) == 0) {
+		flat_bottom_goraud(*points[0].p, *points[1].p, *points[2].p, *points[0].color, *points[1].color, *points[2].color, context);
+	} 
 
-	// If the y-value of the left and right points are the same, we already have a flat-bottom triangle
-	if (right_point->y == left_point->y) {
-		flat_bottom_goraud(*top_point, *left_point, *right_point, *top_color, *left_color, *right_color, context);
-		return;
-	}
+	// If the triangle has neither a flat top, or flat bottom, it makes it very complicated to draw.
+	// Simplify it by splitting it into two triangles (one flat-top, and one flat-bottom)
+	else {
+		struct point split_point = points[1]; // We split the triangle on the middle-y point
+		struct point other_points[] = { points[0], points[2] };
 
-	// If not, the triangle isn't flat bottomed, which makes it complicated to draw.
-	// In that case, split it into two - one flat top and one flat bottom.
-	if (left_point->y < right_point->y) {
-		vec2 split_point;
-		split_point.y = left_point->y;
-		float t = (left_point->y - top_point->y) / (right_point->y - top_point->y);
-		split_point.x = (right_point->x - top_point->x) * t + top_point->x;
-		rgb_color split_color = interpolate_color(*top_color, *right_color, t);
-		flat_bottom_goraud(*top_point, *left_point, split_point, *top_color, *left_color, split_color, context);
-		flat_top_goraud(*right_point, *left_point, split_point, *right_color, *left_color, split_color, context);
-	} else {
-		vec2 split_point;
-		split_point.y = right_point->y;
-		float t = (right_point->y - top_point->y) / (left_point->y - top_point->y);
-		split_point.x = (top_point->x - left_point->x) * (1.0 - t) + left_point->x;
-		rgb_color split_color = interpolate_color(*top_color, *left_color, t);
-		flat_bottom_goraud(*top_point, split_point, *right_point, *top_color, split_color, *right_color, context);
-		flat_top_goraud(*left_point, split_point, *right_point, *left_color, split_color, *right_color, context);
+		// Interpolate between the 'other' points to create a new point
+		float t = (split_point.p->y - other_points[0].p->y) / (other_points[1].p->y - other_points[0].p->y);
+		vec2 new_point;
+		new_point.y = split_point.p->y;
+		new_point.x = (other_points[1].p->x - other_points[0].p->x) * t + other_points[0].p->x;
+		rgb_color new_color = interpolate_color(*other_points[0].color, * other_points[1].color, t);
+
+		goraud_triangle(new_point, *split_point.p, *other_points[0].p, new_color, *split_point.color, *other_points[0].color, context);
+		goraud_triangle(new_point, *split_point.p, *other_points[1].p, new_color, *split_point.color, *other_points[1].color, context);
 	}
 }
 
