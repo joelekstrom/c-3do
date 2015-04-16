@@ -159,7 +159,7 @@ void flat_bottom_goraud(vec2 top,
 
 	for (int y = top.y; y < bottom_left.y + 0.5; y++) {
 		// Interpolate between top and bottom so we can calculate a line width
-		float t = (y - top.y) / (bottom_left.y - top.y);
+		float t = fmin((y - top.y) / (bottom_left.y - top.y), 1.0);
 
 		// Calculate left and right points
 		float left_x = bottom_left.x + ((top.x - bottom_left.x) * (1.0 - t));
@@ -169,7 +169,7 @@ void flat_bottom_goraud(vec2 top,
 		rgb_color line_left_color = interpolate_color(top_color, left_color, t);
 		rgb_color line_right_color = interpolate_color(top_color, right_color, t);
 
-		for (int x = (int)(left_x + 0.5); x < (int)(right_x + 0.5); x++) {
+		for (int x = roundf(left_x); x < roundf(right_x); x++) {
 			float tx = (float)(x - left_x) / (float)width;
       		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx));
 		}
@@ -189,7 +189,7 @@ void flat_top_goraud(vec2 top_left,
 {
 	for (int y = bottom.y; y > top_left.y + 0.5; y--) {
 		// Interpolate between top and bottom so we can calculate a line width
-		float t = 1.0 - (y - top_left.y) / (bottom.y - top_left.y);
+		float t = fmin(1.0 - (y - top_left.y) / (bottom.y - top_left.y), 1.0);
 
 		// Calculate left and right points
 		float left_x = top_left.x + ((bottom.x - top_left.x) * (1.0 - t));
@@ -199,7 +199,7 @@ void flat_top_goraud(vec2 top_left,
 		rgb_color line_left_color = interpolate_color(bottom_color, left_color, t);
 		rgb_color line_right_color = interpolate_color(bottom_color, right_color, t);
 
-		for (int x = (int)(left_x + 0.5); x < (int)(right_x + 0.5); x++) {
+		for (int x = roundf(left_x); x < roundf(right_x); x++) {
 			float tx = (float)(x - left_x) / (float)width;
       		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx));
 		}
