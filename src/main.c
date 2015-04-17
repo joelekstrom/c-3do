@@ -43,12 +43,12 @@ int main() {
 
 	// Center camera on 0.0 and a bit back
 	transform_3d view = transform_3d_make_translation(context->width / 2.0, context->height / 2.0, 100.0);
-	float perspective = 0.0025;
+	float perspective = 0.0005;
 
 	transform_3d flip_yz = transform_3d_identity();
 	flip_yz.sy = -1.0;
 	flip_yz.sz = -1.0;
-	transform_3d scale = transform_3d_make_scale(380.0, 380.0, 60.0);
+	transform_3d scale = transform_3d_make_scale(380.0, 380.0, 380.0);
 	render(model, transform_3d_concat(flip_yz, scale), view, perspective, context, white, SHADING_TYPE_GORAUD);
 	
 	unload_model(model);

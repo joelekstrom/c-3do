@@ -61,11 +61,20 @@ void depth_buffer_set(int x, int y, float value, struct graphics_context *contex
 
 // ********** Drawing functions **********
 
-void draw_pixel(int x, int y, struct graphics_context *context, rgb_color color) {
+void draw_pixel(int x, int y, struct graphics_context *context, rgb_color color, float *depth) {
 	if (context->type == BMP_CONTEXT_TYPE) {
 
 		// Make sure pixel is within context bounds
 		if (x > 0 && x <= context->width && y > 0 && y <= context->height) {
+			
+			// Perform depth check if needed
+			if (depth != NULL) {
+				float current_depth = depth_buffer_get(x, y, context);
+				if (current_depth != Z_BUFFER_NONE && *depth > current_depth) 
+					return;
+				depth_buffer_set(x, y, *depth, context);
+			}
+
 			set_pixel(context->_internal, x, y, color.r, color.g, color.b);
 		}
 	} else {
@@ -99,7 +108,7 @@ void fill_triangle(vec2 p1, vec2 p2, vec2 p3, struct graphics_context *context, 
 
     		// Check if point is inside triangle and draw
     		if ((s >= 0) && (t >= 0) && (s + t <= 1)) {
-      			draw_pixel(x, y, context, color);
+      			draw_pixel(x, y, context, color, NULL);
     		}
   		}
 	}
@@ -143,14 +152,14 @@ void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color col
 		int img_x = steep ? y : x;
 		int img_y = steep ? x : y;
 
-		draw_pixel(img_x, img_y, context, color);
+		draw_pixel(img_x, img_y, context, color, NULL);
 	}
 }
 
 void clear(struct graphics_context *context, rgb_color color) {
 	for (int x = 0; x < context->width; x++) {
 		for (int y = 0; y < context->height; y++) {
-			draw_pixel(x, y, context, color);
+			draw_pixel(x, y, context, color, NULL);
 		}
 	}
 }
@@ -191,19 +200,17 @@ void flat_bottom_goraud(struct point_data top,
 		for (int x = roundf(left_x); x < roundf(right_x); x++) {
 			float tx = (float)(x - left_x) / (float)width;
 
-			// Perform depth check (z-buffering). Only draw this pixel if it's in front
-			// of any currently drawn pixel
+			// Calculate depth for z-buffering
+			float pixel_depth = Z_BUFFER_NONE;
+			float *depth_p = NULL;
 			if (top.depth) {
 				float left_depth = (*top.depth - *bottom_left.depth) * t + *bottom_left.depth;
 				float right_depth = (*top.depth - *bottom_right.depth) * t + *bottom_right.depth;
-				float pixel_depth = (right_depth - left_depth) * tx + left_depth;
-				float current_depth = depth_buffer_get(x, y, context);
-				if (current_depth != Z_BUFFER_NONE && pixel_depth > current_depth)
-					continue;
-				depth_buffer_set(x, y, pixel_depth, context);
+				pixel_depth = (right_depth - left_depth) * tx + left_depth;
+				depth_p = &pixel_depth;
 			}
 
-      		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx));
+      		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx), depth_p);
 		}
 	}
 }
@@ -231,19 +238,17 @@ void flat_top_goraud(struct point_data top_left,
 		for (int x = roundf(left_x); x < roundf(right_x); x++) {
 			float tx = (float)(x - left_x) / (float)width;
 
-			// Perform depth check (z-buffering). Only draw this pixel if it's in front
-			// of any currently drawn pixel
+			// Calculate depth for z-buffering
+			float pixel_depth = Z_BUFFER_NONE;
+			float *depth_p = NULL;
 			if (bottom.depth) {
 				float left_depth = (*top_left.depth - *bottom.depth) * t + *bottom.depth;
 				float right_depth = (*top_right.depth - *bottom.depth) * t + *bottom.depth;
-				float pixel_depth = (right_depth - left_depth) * tx + left_depth;
-				float current_depth = depth_buffer_get(x, y, context);
-				if (current_depth != Z_BUFFER_NONE && pixel_depth > current_depth)
-					continue;
-				depth_buffer_set(x, y, pixel_depth, context);
+				pixel_depth = (right_depth - left_depth) * tx + left_depth;
+				depth_p = &pixel_depth;
 			}
 
-      		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx));
+      		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx), depth_p);
 		}
 	}
 }
