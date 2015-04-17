@@ -1,10 +1,16 @@
 #include "graphics_context.h"
 #include "../lib/nano-bmp/include/nano_bmp.h"
+#include <string.h>
+#include <limits.h>
 #include <stdio.h>
 #include <math.h>
 
+#define Z_BUFFER_NONE UINT_MAX
+
 struct graphics_context *create_context(context_type type, int width, int height) {
 	struct graphics_context *context = (struct graphics_context *)malloc(sizeof(struct graphics_context));
+	context->depth_buffer = (float *)malloc(sizeof(float) * width * height);
+	memset(context->depth_buffer, Z_BUFFER_NONE, sizeof(float) * width * height);
 	context->type = type;
 	context->width = width;
 	context->height = height;
@@ -22,6 +28,7 @@ struct graphics_context *create_context(context_type type, int width, int height
 void destroy_context(struct graphics_context *context) {
 	if (context->type == BMP_CONTEXT_TYPE) {
 		free(context->_internal);
+		free(context->depth_buffer);
 		free(context);
 	}
 }
@@ -41,6 +48,15 @@ rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value) {
 	result.g = c1.g + (c2.g - c1.g) * value;
 	result.b = c1.b + (c2.b - c1.b) * value;
 	return result;
+}
+
+// ********** Z-buffering ***************
+float depth_buffer_get(int x, int y, struct graphics_context *context) {
+	return context->depth_buffer[context->width * x + y];  
+}
+
+void depth_buffer_set(int x, int y, float value, struct graphics_context *context) {
+	context->depth_buffer[context->width * x + y] = value;
 }
 
 // ********** Drawing functions **********
@@ -142,31 +158,51 @@ void clear(struct graphics_context *context, rgb_color color) {
 // ********** Goraud triangle drawing **********
 
 /**
+ A "tuple" which associates a vector with a color and depth. Comparing functions
+ below so we can sort tuples easily top > left > right
+ */
+struct point_data {
+	vec2 *point;
+	rgb_color *color;
+	float *depth;
+};
+
+/**
  Fills a goraud flat-bottomed triangle. Points/colors need to be sorted before, and
  bottom_left and bottom_right must have the same y-value, and it must be > top.y
  */
-void flat_bottom_goraud(vec2 top, 
-						vec2 bottom_left, 
-						vec2 bottom_right, 
-						rgb_color top_color, 
-						rgb_color left_color, 
-						rgb_color right_color, 
+void flat_bottom_goraud(struct point_data top, 
+						struct point_data bottom_left, 
+						struct point_data bottom_right,
 						struct graphics_context *context) 
 {
-	for (int y = top.y; y < bottom_left.y + 0.5; y++) {
+	for (int y = top.point->y; y < bottom_left.point->y + 0.5; y++) {
 		// Interpolate between top and bottom so we can calculate a line width
-		float t = fmin((y - top.y) / (bottom_left.y - top.y), 1.0);
+		float t = fmin((y - top.point->y) / (bottom_left.point->y - top.point->y), 1.0);
 
 		// Calculate left and right points
-		float left_x = bottom_left.x + ((top.x - bottom_left.x) * (1.0 - t));
-		float width = (bottom_right.x - bottom_left.x) * t;
+		float left_x = bottom_left.point->x + ((top.point->x - bottom_left.point->x) * (1.0 - t));
+		float width = (bottom_right.point->x - bottom_left.point->x) * t;
 		float right_x = left_x + width;
 
-		rgb_color line_left_color = interpolate_color(top_color, left_color, t);
-		rgb_color line_right_color = interpolate_color(top_color, right_color, t);
+		rgb_color line_left_color = interpolate_color(*top.color, *bottom_left.color, t);
+		rgb_color line_right_color = interpolate_color(*top.color, *bottom_right.color, t);
 
 		for (int x = roundf(left_x); x < roundf(right_x); x++) {
 			float tx = (float)(x - left_x) / (float)width;
+
+			// Perform depth check (z-buffering). Only draw this pixel if it's in front
+			// of any currently drawn pixel
+			if (top.depth) {
+				float left_depth = (*top.depth - *bottom_left.depth) * t + *bottom_left.depth;
+				float right_depth = (*top.depth - *bottom_right.depth) * t + *bottom_right.depth;
+				float pixel_depth = (right_depth - left_depth) * tx + left_depth;
+				float current_depth = depth_buffer_get(x, y, context);
+				if (current_depth != Z_BUFFER_NONE && pixel_depth > current_depth)
+					continue;
+				depth_buffer_set(x, y, pixel_depth, context);
+			}
+
       		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx));
 		}
 	}
@@ -175,55 +211,56 @@ void flat_bottom_goraud(vec2 top,
 /**
  Same as above but inverted
  */
-void flat_top_goraud(vec2 top_left, 
-					 vec2 top_right, 
-					 vec2 bottom,
-					 rgb_color left_color, 
-					 rgb_color right_color, 
-					 rgb_color bottom_color,
+void flat_top_goraud(struct point_data top_left, 
+					 struct point_data top_right, 
+					 struct point_data bottom,
 					 struct graphics_context *context) 
 {
-	for (int y = bottom.y; y > top_left.y + 0.5; y--) {
+	for (int y = bottom.point->y; y > top_left.point->y + 0.5; y--) {
 		// Interpolate between top and bottom so we can calculate a line width
-		float t = fmin(1.0 - (y - top_left.y) / (bottom.y - top_left.y), 1.0);
+		float t = fmin(1.0 - (y - top_left.point->y) / (bottom.point->y - top_left.point->y), 1.0);
 
 		// Calculate left and right points
-		float left_x = top_left.x + ((bottom.x - top_left.x) * (1.0 - t));
-		float width = (top_right.x - top_left.x) * t;
+		float left_x = top_left.point->x + ((bottom.point->x - top_left.point->x) * (1.0 - t));
+		float width = (top_right.point->x - top_left.point->x) * t;
 		float right_x = left_x + width;
 
-		rgb_color line_left_color = interpolate_color(bottom_color, left_color, t);
-		rgb_color line_right_color = interpolate_color(bottom_color, right_color, t);
+		rgb_color line_left_color = interpolate_color(*bottom.color, *top_left.color, t);
+		rgb_color line_right_color = interpolate_color(*bottom.color, *top_right.color, t);
 
 		for (int x = roundf(left_x); x < roundf(right_x); x++) {
 			float tx = (float)(x - left_x) / (float)width;
+
+			// Perform depth check (z-buffering). Only draw this pixel if it's in front
+			// of any currently drawn pixel
+			if (bottom.depth) {
+				float left_depth = (*top_left.depth - *bottom.depth) * t + *bottom.depth;
+				float right_depth = (*top_right.depth - *bottom.depth) * t + *bottom.depth;
+				float pixel_depth = (right_depth - left_depth) * tx + left_depth;
+				float current_depth = depth_buffer_get(x, y, context);
+				if (current_depth != Z_BUFFER_NONE && pixel_depth > current_depth)
+					continue;
+				depth_buffer_set(x, y, pixel_depth, context);
+			}
+
       		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx));
 		}
 	}
 }
 
-/**
- A "tuple" which associates a vector with a color. Comparing functions
- below so we can sort tuples easily top > left > right
- */
-struct point {
-	vec2 *p;
-	rgb_color *color;
-};
-
 int compare_points_x(const void *a, const void *b) {
-	struct point *p1 = (struct point *)a;
-	struct point *p2 = (struct point *)b;
-	if (p1->p->x < p2->p->x) return -1;
-	if (p1->p->x > p2->p->x) return 1;
+	struct point_data *p1 = (struct point_data *)a;
+	struct point_data *p2 = (struct point_data *)b;
+	if (p1->point->x < p2->point->x) return -1;
+	if (p1->point->x > p2->point->x) return 1;
 	return 0;
 }
 
 int compare_points_y(const void *a, const void *b) {
-	struct point *p1 = (struct point *)a;
-	struct point *p2 = (struct point *)b;
-	if (p1->p->y < p2->p->y) return -1;
-	if (p1->p->y > p2->p->y) return 1;
+	struct point_data *p1 = (struct point_data *)a;
+	struct point_data *p2 = (struct point_data *)b;
+	if (p1->point->y < p2->point->y) return -1;
+	if (p1->point->y > p2->point->y) return 1;
 	return 0;
 }
 
@@ -239,51 +276,52 @@ int compare_points(const void *a, const void *b) {
  This function sorts the points/colors and splits the triangle if needed,
  and then delegates drawing to flat_top/flat_bottom_goraud
  */
-void goraud_triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_context *context) {
+void goraud_triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_context *context, float *point_depths) {
 
 	// Build an array of point objects so we can sort vectors and colors together
-	struct point points[3];
+	struct point_data points[3];
 	for (int i = 0; i < 3; ++i) {
-		struct point point;
-		point.p = &vectors[i];
-		point.color = &colors[i];
-		points[i] = point;
+		struct point_data data;
+		data.point = &vectors[i];
+		data.color = &colors[i];
+		data.depth = point_depths != NULL ? &point_depths[i] : NULL;
+		points[i] = data;
 	}
 
 	// Sort it top->left->right
-	qsort(&points, 3, sizeof(struct point), &compare_points);
+	qsort(&points, 3, sizeof(struct point_data), &compare_points);
 
 	// If the y-value of the first and second points are the same, we have a flat-top triangle
 	if (compare_points_y(&points[0], &points[1]) == 0) {
-		flat_top_goraud(*points[0].p, *points[1].p, *points[2].p, *points[0].color, *points[1].color, *points[2].color, context);
+		flat_top_goraud(points[0], points[1], points[2], context);
 	} 
 
 	// ... And if the second and third have the same y-value, we have a flat-bottom triangle
 	else if (compare_points_y(&points[1], &points[2]) == 0) {
-		flat_bottom_goraud(*points[0].p, *points[1].p, *points[2].p, *points[0].color, *points[1].color, *points[2].color, context);
+		flat_bottom_goraud(points[0], points[1], points[2], context);
 	} 
 
 	// If the triangle has neither a flat top, or flat bottom, it makes it very complicated to draw.
 	// Simplify it by splitting it into two triangles (one flat-top, and one flat-bottom)
 	else {
-		struct point split_point = points[1]; // We split the triangle on the middle-y point
-		struct point other_points[] = { points[0], points[2] };
+		struct point_data split_point = points[1]; // We split the triangle on the middle-y point
+		struct point_data other_points[] = { points[0], points[2] };
 
 		// Interpolate between the 'other' points to create a new point
-		float t = (split_point.p->y - other_points[0].p->y) / (other_points[1].p->y - other_points[0].p->y);
+		float t = (split_point.point->y - other_points[0].point->y) / (other_points[1].point->y - other_points[0].point->y);
 		vec2 new_point;
-		new_point.y = split_point.p->y;
-		new_point.x = (other_points[1].p->x - other_points[0].p->x) * t + other_points[0].p->x;
-		rgb_color new_color = interpolate_color(*other_points[0].color, * other_points[1].color, t);
+		new_point.y = split_point.point->y;
+		new_point.x = (other_points[1].point->x - other_points[0].point->x) * t + other_points[0].point->x;
+		rgb_color new_color = interpolate_color(*other_points[0].color, *other_points[1].color, t);
 
 		// Call this function again with the new triangles
-		vec2 triangle1_points[] = { new_point, *split_point.p, *other_points[0].p };
+		vec2 triangle1_points[] = { new_point, *split_point.point, *other_points[0].point };
 		rgb_color triangle1_colors[] = { new_color, *split_point.color, *other_points[0].color };
-		goraud_triangle(triangle1_points, triangle1_colors, context);
+		goraud_triangle(triangle1_points, triangle1_colors, context, point_depths);
 
-		vec2 triangle2_points[] = { new_point, *split_point.p, *other_points[1].p };
+		vec2 triangle2_points[] = { new_point, *split_point.point, *other_points[1].point };
 		rgb_color triangle2_colors[] = { new_color, *split_point.color, *other_points[1].color };
-		goraud_triangle(triangle2_points, triangle2_colors, context);
+		goraud_triangle(triangle2_points, triangle2_colors, context, point_depths);
 	}
 }
 

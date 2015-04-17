@@ -92,8 +92,10 @@ void render(struct model model,
 		// Position vertices in view and apply any transformations
 		transform_3d t = transform_3d_concat(transform, view);
 		vec3 vertices[3];
+		float depths[3];
 		for (int i = 0; i < 3; ++i) {
 			vertices[i] = transform_3d_apply(*f.vertices[i], t);
+			depths[i] = vertices[i].z;
 		}
 
 		vec3 view_point = {0, 0, 0};
@@ -123,7 +125,7 @@ void render(struct model model,
 			// from color to black.
 			rgb_color shaded_color = interpolate_color(black, color, light_intensity);
 			rgb_color colors[] = { shaded_color, shaded_color, shaded_color }; // Goraud_triangle takes an array of colors
-			goraud_triangle(points, colors, context);
+			goraud_triangle(points, colors, context, depths);
 		}
 
 		else if (shading_type == SHADING_TYPE_GORAUD) {
@@ -131,7 +133,7 @@ void render(struct model model,
 			for (int i = 0; i < 3; ++i) {
 				colors[i] = interpolate_color(black, color, dot_product_3d(*f.normals[i], vec3_unit(light_direction)));	
 			}
-			goraud_triangle(points, colors, context);	
+			goraud_triangle(points, colors, context, depths);
 		}
 	}
 }
