@@ -153,10 +153,6 @@ void flat_bottom_goraud(vec2 top,
 						rgb_color right_color, 
 						struct graphics_context *context) 
 {
-
-	// There's a bug in this function with the following values
-	// top=(x = 465.574036, y = 131.912537), bottom_left=(x = 442.840851, y = 131.913513), bottom_right=(x = 465.574127, y = 131.913513)
-
 	for (int y = top.y; y < bottom_left.y + 0.5; y++) {
 		// Interpolate between top and bottom so we can calculate a line width
 		float t = fmin((y - top.y) / (bottom_left.y - top.y), 1.0);
@@ -243,17 +239,14 @@ int compare_points(const void *a, const void *b) {
  This function sorts the points/colors and splits the triangle if needed,
  and then delegates drawing to flat_top/flat_bottom_goraud
  */
-void goraud_triangle(vec2 p1, vec2 p2, vec2 p3, rgb_color c1, rgb_color c2, rgb_color c3, struct graphics_context *context) {
+void goraud_triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_context *context) {
 
-	// Build an array of points
-	vec2 *vectors[] = { &p1, &p2, &p3 };
-	rgb_color *colors[] = { &c1, &c2, &c3 };
+	// Build an array of point objects so we can sort vectors and colors together
 	struct point points[3];
-
 	for (int i = 0; i < 3; ++i) {
 		struct point point;
-		point.p = vectors[i];
-		point.color = colors[i];
+		point.p = &vectors[i];
+		point.color = &colors[i];
 		points[i] = point;
 	}
 
@@ -283,8 +276,14 @@ void goraud_triangle(vec2 p1, vec2 p2, vec2 p3, rgb_color c1, rgb_color c2, rgb_
 		new_point.x = (other_points[1].p->x - other_points[0].p->x) * t + other_points[0].p->x;
 		rgb_color new_color = interpolate_color(*other_points[0].color, * other_points[1].color, t);
 
-		goraud_triangle(new_point, *split_point.p, *other_points[0].p, new_color, *split_point.color, *other_points[0].color, context);
-		goraud_triangle(new_point, *split_point.p, *other_points[1].p, new_color, *split_point.color, *other_points[1].color, context);
+		// Call this function again with the new triangles
+		vec2 triangle1_points[] = { new_point, *split_point.p, *other_points[0].p };
+		rgb_color triangle1_colors[] = { new_color, *split_point.color, *other_points[0].color };
+		goraud_triangle(triangle1_points, triangle1_colors, context);
+
+		vec2 triangle2_points[] = { new_point, *split_point.p, *other_points[1].p };
+		rgb_color triangle2_colors[] = { new_color, *split_point.color, *other_points[1].color };
+		goraud_triangle(triangle2_points, triangle2_colors, context);
 	}
 }
 

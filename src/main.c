@@ -91,30 +91,30 @@ void render(struct model model,
 
 		// Position vertices in view and apply any transformations
 		transform_3d t = transform_3d_concat(transform, view);
-		vec3 v1 = transform_3d_apply(*f.vertices[0], t);
-		vec3 v2 = transform_3d_apply(*f.vertices[1], t);
-		vec3 v3 = transform_3d_apply(*f.vertices[2], t);
+		vec3 vertices[3];
+		for (int i = 0; i < 3; ++i) {
+			vertices[i] = transform_3d_apply(*f.vertices[i], t);
+		}
 
 		vec3 view_point = {0, 0, 0};
 		view_point = transform_3d_apply(view_point, view);
-
-		vec3 vertices[] = {v1, v2, v3};
 		vec3 face_normal = surface_normal(vertices);
-		vec3 light_direction = {1.0, 1.0, 1.0};
+		vec3 light_direction = {0.0, 0.0, 1.0};
 		float light_intensity = dot_product_3d(face_normal, vec3_unit(light_direction));
 		if (light_intensity < 0.0)
 			continue; // Back-face culling
 
 		// Apply perspective (map 3D-coordinates to a 2D-space)
-		vec2 p1 = apply_perspective(v1, view_point, perspective);
-		vec2 p2 = apply_perspective(v2, view_point, perspective);
-		vec2 p3 = apply_perspective(v3, view_point, perspective);
+		vec2 points[3];
+		for (int i = 0; i < 3; ++i) {
+			points[i] = apply_perspective(vertices[i], view_point, perspective);
+		}
 
 		// Wireframe
 		if (shading_type == SHADING_TYPE_WIREFRAME) {
-			draw_line(p1, p2, context, color);
-			draw_line(p2, p3, context, color);
-			draw_line(p1, p3, context, color);
+			draw_line(points[0], points[1], context, color);
+			draw_line(points[1], points[2], context, color);
+			draw_line(points[0], points[2], context, color);
 		} 
 
 		// Flat shading
@@ -122,14 +122,16 @@ void render(struct model model,
 			// Calculate a color from the view angle. We interpolate
 			// from color to black.
 			rgb_color shaded_color = interpolate_color(black, color, light_intensity);
-			goraud_triangle(p1, p2, p3, shaded_color, shaded_color, shaded_color, context);
+			rgb_color colors[] = { shaded_color, shaded_color, shaded_color }; // Goraud_triangle takes an array of colors
+			goraud_triangle(points, colors, context);
 		}
 
 		else if (shading_type == SHADING_TYPE_GORAUD) {
-			rgb_color p1_color = interpolate_color(black, color, dot_product_3d(*f.normals[0], vec3_unit(light_direction)));
-			rgb_color p2_color = interpolate_color(black, color, dot_product_3d(*f.normals[1], vec3_unit(light_direction)));
-			rgb_color p3_color = interpolate_color(black, color, dot_product_3d(*f.normals[2], vec3_unit(light_direction)));
-			goraud_triangle(p1, p2, p3, p1_color, p2_color, p3_color, context);	
+			rgb_color colors[3];
+			for (int i = 0; i < 3; ++i) {
+				colors[i] = interpolate_color(black, color, dot_product_3d(*f.normals[i], vec3_unit(light_direction)));	
+			}
+			goraud_triangle(points, colors, context);	
 		}
 	}
 }
