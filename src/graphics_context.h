@@ -2,6 +2,7 @@
 #define GRAPHICS_CONTEXT_H
 
 #include "geometry.h"
+#include <stdint.h>
 #include <stdlib.h>
 
 typedef struct {
