@@ -144,7 +144,7 @@ void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color col
     	swapf(&p1.y, &p2.y);
     }
 
-    for (int x = p1.x; x <= p2.x; x++) { // Round to integers by adding 0.5
+    for (int x = p1.x; x <= p2.x; x++) {
 		float t = (x - p1.x) / (float)(p2.x - p1.x);
 		int y = p1.y * (1.0 - t) + (p2.y * t) + 0.5;
 
