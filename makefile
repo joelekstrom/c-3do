@@ -1,8 +1,11 @@
 BIN = ./bin
 SRC = ./src
 LIB = ./lib
-CC = clang
 CFLAGS = -Wall -Wextra
+
+ifndef CC
+    CC = clang
+endif
 
 $(BIN)/renderer: $(BIN)/main.o $(BIN)/obj.o $(BIN)/geometry.o $(BIN)/nano-bmp.o $(BIN)/graphics_context.o
 	$(CC) $(CFLAGS) -o $(BIN)/renderer $(BIN)/main.o $(BIN)/obj.o $(BIN)/geometry.o $(BIN)/nano-bmp.o $(BIN)/graphics_context.o
