@@ -1,4 +1,4 @@
-# c-3do
+# c-3do [![Build Status](https://travis-ci.org/accatyyc/c-3do.svg?branch=master)](https://travis-ci.org/accatyyc/c-3do)
 A small software renderer in C.
 
 This is a personal project to learn more about computer graphics. The goal: from using only a function to set the color of a single pixel, implement everything needed to render 3D-models.
