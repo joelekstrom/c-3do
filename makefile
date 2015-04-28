@@ -4,7 +4,7 @@ LIB = ./lib
 CFLAGS = -Wall -Wextra
 
 ifndef CC
-    CC = clang
+    CC = gcc
 endif
 
 $(BIN)/renderer: $(BIN)/main.o $(BIN)/obj.o $(BIN)/geometry.o $(BIN)/nano-bmp.o $(BIN)/graphics_context.o
@@ -20,7 +20,7 @@ $(BIN)/geometry.o: $(BIN) $(SRC)/geometry.h $(SRC)/geometry.c
 	$(CC) $(CFLAGS) -o $(BIN)/geometry.o -c $(SRC)/geometry.c
 
 $(BIN)/nano-bmp.o: $(BIN)
-	$(CC) $(CFLAGS) -o $(BIN)/nano-bmp.o -c $(LIB)/nano-bmp/src/nano_bmp.c -I$(LIB)/nano-bmp/include/
+	$(CC) $(CFLAGS) -o $(BIN)/nano-bmp.o -c $(LIB)/Nano-BMP/src/nano_bmp.c -I$(LIB)/Nano-BMP/include/
 
 $(BIN)/graphics_context.o: $(BIN) $(SRC)/graphics_context.c $(SRC)/graphics_context.h $(SRC)/geometry.h
 	$(CC) $(CFLAGS) -o $(BIN)/graphics_context.o -c $(SRC)/graphics_context.c
