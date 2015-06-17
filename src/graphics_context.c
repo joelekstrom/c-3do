@@ -1,5 +1,5 @@
 #include "graphics_context.h"
-#include "../lib/Nano-BMP/include/nano_bmp.h"
+#include "nano_bmp.h"
 #include <string.h>
 #include <limits.h>
 #include <stdio.h>
