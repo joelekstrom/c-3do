@@ -60,7 +60,7 @@ int main() {
 /**
  Applies perspective to simulate vector positions in 3D-space, relative to a view position
  */
-static inline vec2 apply_perspective(vec3 position, vec3 view_point, float amount) {
+vec2 apply_perspective(vec3 position, vec3 view_point, float amount) {
 	float distance_x = view_point.x - position.x;
 	float distance_y = view_point.y - position.y;
 	vec2 result;
