@@ -32,7 +32,7 @@ int main() {
 	clear(context, black);
 
 	// load .sob-file
-	FILE *fp = fopen("model/human_head.obj", "r");
+	FILE *fp = fopen("../model/human_head.obj", "r");
 	if (!fp) {
 		fprintf(stderr, "Failed to open model file");
 		return 1;
@@ -52,7 +52,7 @@ int main() {
 	render(model, transform_3d_concat(flip_yz, scale), view, perspective, context, white, SHADING_TYPE_GORAUD);
 	
 	unload_model(model);
-	bmp_context_save(context, "bin/output.bmp");
+	bmp_context_save(context, "output.bmp");
 	destroy_context(context);
 	return 0;
 }

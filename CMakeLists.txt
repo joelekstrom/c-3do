@@ -5,7 +5,8 @@ add_definitions(-std=c99)
 add_definitions(-Wall)
 add_definitions(-Wextra)
 
+include_directories(include lib/Nano-BMP/include)
 add_subdirectory(lib/Nano-BMP)
-include_directories(lib/Nano-BMP/include)
-set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} )
 add_subdirectory(src)
+
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} )
