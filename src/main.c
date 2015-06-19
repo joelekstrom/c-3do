@@ -32,7 +32,7 @@ int main() {
 	clear(context, black);
 
 	// load .sob-file
-	FILE *fp = fopen("../model/human_head.obj", "r");
+	FILE *fp = fopen("model/human_head.obj", "r");
 	if (!fp) {
 		fprintf(stderr, "Failed to open model file");
 		return 1;
