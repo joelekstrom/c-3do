@@ -13,82 +13,84 @@ rgb_color yellow = {255, 255, 0};
 rgb_color black = {0, 0, 0};
 
 typedef enum {
-	SHADING_TYPE_WIREFRAME,
-	SHADING_TYPE_FLAT,
-	SHADING_TYPE_GORAUD
+    SHADING_TYPE_WIREFRAME,
+    SHADING_TYPE_FLAT,
+    SHADING_TYPE_GORAUD
 } SHADING_TYPE;
 
 void render(struct model model, 
-				 transform_3d transform, 
-				 transform_3d view, 
-				 float perspective, 
-				 struct graphics_context *context, 
-				 rgb_color color,
-				 SHADING_TYPE shading_type);
+			transform_3d transform, 
+			transform_3d view, 
+			float perspective, 
+			struct graphics_context *context, 
+			rgb_color color,
+			SHADING_TYPE shading_type);
 
 int main() {
-	struct graphics_context *context = create_context(BMP_CONTEXT_TYPE, 800, 800);
+    struct graphics_context *context = create_context(BMP_CONTEXT_TYPE, 800, 800);
 
-	clear(context, black);
+    clear(context, black);
 
 	// load .sob-file
-	FILE *fp = fopen("model/human_head.obj", "r");
-	if (!fp) {
+    FILE *fp = fopen("model/Head_Triangulated.obj", "r");
+    if (!fp) {
 		fprintf(stderr, "Failed to open model file");
 		return 1;
-	}
+    }
 
-	struct model model = load_model(fp);
-	fclose(fp);
+    struct model model = load_model(fp);
+    fclose(fp);
 
-	// Center camera on 0.0 and a bit back
-	transform_3d view = transform_3d_make_translation(context->width / 2.0, context->height / 2.0, 100.0);
-	float perspective = 0.0005;
+    // Center camera on 0.0 and a bit back
+    transform_3d view = transform_3d_make_translation(context->width / 2.0, context->height / 2.0, 100.0);
+    float perspective = 0.0005;
 
-	transform_3d flip_yz = transform_3d_identity();
-	flip_yz.sy = -1.0;
-	flip_yz.sz = -1.0;
-	transform_3d scale = transform_3d_make_scale(380.0, 380.0, 380.0);
-	render(model, transform_3d_concat(flip_yz, scale), view, perspective, context, white, SHADING_TYPE_GORAUD);
+    transform_3d flip_yz = transform_3d_identity();
+    flip_yz.sy = -1.0;
+    flip_yz.sz = -1.0;
+    // transform_3d scale = transform_3d_make_scale(1.0, 1.0, 1.0);
+    transform_3d translate = transform_3d_make_translation(0.0, 90.0, -70000.0);
+    // transform_3d scale_and_translate = transform_3d_concat(scale, translate);
+    render(model, transform_3d_concat(flip_yz, translate), view, perspective, context, white, SHADING_TYPE_GORAUD);
 	
-	unload_model(model);
-	bmp_context_save(context, "output.bmp");
-	destroy_context(context);
-	return 0;
+    unload_model(model);
+    bmp_context_save(context, "output.bmp");
+    destroy_context(context);
+    return 0;
 }
 
 /**
- Applies perspective to simulate vector positions in 3D-space, relative to a view position
- */
+   Applies perspective to simulate vector positions in 3D-space, relative to a view position
+*/
 vec2 apply_perspective(vec3 position, vec3 view_point, float amount) {
-	float distance_x = view_point.x - position.x;
-	float distance_y = view_point.y - position.y;
-	vec2 result;
-	result.x = position.x + position.z * distance_x * amount;
-	result.y = position.y + position.z * distance_y * amount;
-	return result;
+    float distance_x = view_point.x - position.x;
+    float distance_y = view_point.y - position.y;
+    vec2 result;
+    result.x = position.x + position.z * distance_x * amount;
+    result.y = position.y + position.z * distance_y * amount;
+    return result;
 }
 
 /**
- Calculates the normal vector for a face
- */
+   Calculates the normal vector for a face
+*/
 vec3 surface_normal(vec3 vertices[3]) {
-	vec3 u = vec3_subtract(vertices[2], vertices[0]);
-	vec3 v = vec3_subtract(vertices[1], vertices[0]);
-	return vec3_unit(cross_product(u, v));
+    vec3 u = vec3_subtract(vertices[2], vertices[0]);
+    vec3 v = vec3_subtract(vertices[1], vertices[0]);
+    return vec3_unit(cross_product(u, v));
 }
 
 void render(struct model model, 
-				 transform_3d transform, 
-				 transform_3d view, 
-				 float perspective, 
-				 struct graphics_context *context, 
-				 rgb_color color,
-				 SHADING_TYPE shading_type) 
+			transform_3d transform, 
+			transform_3d view, 
+			float perspective, 
+			struct graphics_context *context, 
+			rgb_color color,
+			SHADING_TYPE shading_type) 
 {
-	for (int i = 0; i < model.num_faces; i++) {
+    for (int i = 0; i < model.num_faces; i++) {
 		struct face f = model.faces[i];
-
+		
 		// Position vertices in view and apply any transformations
 		transform_3d t = transform_3d_concat(transform, view);
 		vec3 vertices[3];
@@ -135,5 +137,5 @@ void render(struct model model,
 			}
 			goraud_triangle(points, colors, context, depths);
 		}
-	}
+    }
 }
