@@ -43,10 +43,9 @@ void bmp_context_save(struct graphics_context *context, char name[]) {
 }
 
 rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value) {
-	rgb_color result;
-	result.r = c1.r + (c2.r - c1.r) * value;
-	result.g = c1.g + (c2.g - c1.g) * value;
-	result.b = c1.b + (c2.b - c1.b) * value;
+	rgb_color result = { .r = c1.r + (c2.r - c1.r) * value,
+                         .g = c1.g + (c2.g - c1.g) * value,
+                         .b = c1.b + (c2.b - c1.b) * value };
 	return result;
 }
 
@@ -134,14 +133,14 @@ void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color col
 	// If the line is steep (height > width), we transpose the line, so we can always loop on x-value
 	int steep = fabsf(p2.y - p1.y) > fabsf(p2.x - p1.x);
     if (steep) {
-    	swapf(&p1.x, &p1.y);
-    	swapf(&p2.x, &p2.y);
+	swapf(&p1.x, &p1.y);
+	swapf(&p2.x, &p2.y);
     }
 
     // Make sure it's drawn left->right
     if (p2.x <= p1.x) {
-    	swapf(&p1.x, &p2.x);
-    	swapf(&p1.y, &p2.y);
+	swapf(&p1.x, &p2.x);
+	swapf(&p1.y, &p2.y);
     }
 
     for (int x = p1.x; x <= p2.x; x++) {

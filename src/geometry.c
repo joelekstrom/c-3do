@@ -11,54 +11,38 @@ float dot_product_3d(vec3 v1, vec3 v2) {
 }
 
 vec3 cross_product(vec3 v1, vec3 v2) {
-	vec3 result;
-	result.x = v1.y * v2.z - v1.z * v2.y;
-	result.y = v1.z * v2.x - v1.x * v2.z;
-	result.z = v1.x * v2.y - v1.y * v2.x;
+	vec3 result = { .x = v1.y * v2.z - v1.z * v2.y,
+                    .y = v1.z * v2.x - v1.x * v2.z,
+                    .z = v1.x * v2.y - v1.y * v2.x };
 	return result;
 }
 
 vec3 vec3_unit(vec3 v) {
-	float length = sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+	float length = sqrt((v.x * v.x) + (v.y * v.y) + (v.z * v.z));
 	vec3 result = {v.x / length, v.y / length, v.z / length};
 	return result;
 }
 
 vec3 vec3_subtract(vec3 v1, vec3 v2) {
-	vec3 result;
-	result.x = v1.x - v2.x;
-	result.y = v1.y - v2.y;
-	result.z = v1.z - v2.z;
+	vec3 result = { .x = v1.x - v2.x,
+                    .y = v1.y - v2.y,
+                    .z = v1.z - v2.z };
 	return result;
 }
 
 vec3 vec3_add(vec3 v1, vec3 v2) {
-	vec3 result;
-	result.x = v1.x + v2.x;
-	result.y = v1.y + v2.y;
-	result.z = v1.z + v2.z;
+	vec3 result = { .x = v1.x + v2.x,
+                    .y = v1.y + v2.y,
+                    .z = v1.z + v2.z };
 	return result;
 }
 
-vec3 vec3_neg(vec3 v) {
-	vec3 result;
-	result.x = -v.x;
-	result.y = -v.y;
-	result.z = -v.z;
-	return result;
-}
-
-transform_3d transform_3d_identity() {
-	transform_3d t;
-	t.sx = 1, t.ax = 0, t.bx = 0, t.tx = 0;
-	t.ay = 0, t.sy = 1, t.by = 0, t.ty = 0;
-	t.az = 0, t.bz = 0, t.sz = 1, t.tz = 0;
-	t.am = 0, t.bm = 0, t.cm = 0, t.dm = 1;
-	return t;
-}
+const transform_3d transform_3d_identity = {
+    .sx = 1.0, .sy = 1.0, .sz = 1.0, .dm = 1.0
+};
 
 transform_3d transform_3d_make_translation(float tx, float ty, float tz) {
-	transform_3d t = transform_3d_identity();
+	transform_3d t = transform_3d_identity;
 	t.tx = tx;
 	t.ty = ty;
 	t.tz = tz;
@@ -66,7 +50,7 @@ transform_3d transform_3d_make_translation(float tx, float ty, float tz) {
 }
 
 transform_3d transform_3d_make_scale(float sx, float sy, float sz) {
-	transform_3d t = transform_3d_identity();
+	transform_3d t = transform_3d_identity;
 	t.sx = sx;
 	t.sy = sy;
 	t.sz = sz;
@@ -83,10 +67,11 @@ transform_3d transform_3d_concat(transform_3d t1, transform_3d t2) {
 }
 
 vec3 transform_3d_apply(vec3 v, transform_3d t) {
-	vec3 result;
-	result.x = (v.x * t.sx) + (v.y * t.ax) + (v.z * t.bx) + (t.dm * t.tx);
-	result.y = (v.x * t.ay) + (v.y * t.sy) + (v.z * t.by) + (t.dm * t.ty);
-	result.z = (v.x * t.az) + (v.y * t.bz) + (v.z * t.sz) + (t.dm * t.tz);
+	vec3 result = {
+        .x = (v.x * t.sx) + (v.y * t.ax) + (v.z * t.bx) + (t.dm * t.tx),
+        .y = (v.x * t.ay) + (v.y * t.sy) + (v.z * t.by) + (t.dm * t.ty),
+        .z = (v.x * t.az) + (v.y * t.bz) + (v.z * t.sz) + (t.dm * t.tz)
+    };
 	return result;
 }
 
