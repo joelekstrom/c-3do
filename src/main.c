@@ -13,7 +13,6 @@ rgb_color yellow = {255, 255, 0};
 rgb_color black = {0, 0, 0};
 
 typedef enum {
-    SHADING_TYPE_WIREFRAME,
     SHADING_TYPE_FLAT,
     SHADING_TYPE_GORAUD
 } SHADING_TYPE;
@@ -24,7 +23,8 @@ void render(struct model model,
 			float perspective, 
 			struct graphics_context *context, 
 			rgb_color color,
-			SHADING_TYPE shading_type);
+			SHADING_TYPE shading_type,
+			rgb_color *wireframe_color);
 
 int main() {
     struct graphics_context *context = create_context(BMP_CONTEXT_TYPE, 800, 800);
@@ -51,7 +51,7 @@ int main() {
     // transform_3d scale = transform_3d_make_scale(1.0, 1.0, 1.0);
     transform_3d translate = transform_3d_make_translation(0.0, 90.0, -70000.0);
     // transform_3d scale_and_translate = transform_3d_concat(scale, translate);
-    render(model, transform_3d_concat(flip_yz, translate), view, perspective, context, white, SHADING_TYPE_GORAUD);
+    render(model, transform_3d_concat(flip_yz, translate), view, perspective, context, white, SHADING_TYPE_FLAT, &black);
 	
     unload_model(model);
     bmp_context_save(context, "output.bmp");
@@ -86,7 +86,8 @@ void render(struct model model,
 			float perspective, 
 			struct graphics_context *context, 
 			rgb_color color,
-			SHADING_TYPE shading_type) 
+			SHADING_TYPE shading_type,
+			rgb_color *wireframe_color)
 {
     for (int i = 0; i < model.num_faces; i++) {
 		struct face f = model.faces[i];
@@ -114,15 +115,8 @@ void render(struct model model,
 			points[i] = apply_perspective(vertices[i], view_point, perspective);
 		}
 
-		// Wireframe
-		if (shading_type == SHADING_TYPE_WIREFRAME) {
-			draw_line(points[0], points[1], context, color);
-			draw_line(points[1], points[2], context, color);
-			draw_line(points[0], points[2], context, color);
-		} 
-
 		// Flat shading
-		else if (shading_type == SHADING_TYPE_FLAT) {
+		if (shading_type == SHADING_TYPE_FLAT) {
 			// Calculate a color from the view angle. We interpolate
 			// from color to black.
 			rgb_color shaded_color = interpolate_color(black, color, light_intensity);
@@ -136,6 +130,13 @@ void render(struct model model,
 				colors[i] = interpolate_color(black, color, dot_product_3d(*f.normals[i], vec3_unit(light_direction)));	
 			}
 			goraud_triangle(points, colors, context, depths);
+		}
+
+		// Wireframes
+		if (wireframe_color) {
+			draw_line(points[0], points[1], context, *wireframe_color);
+			draw_line(points[1], points[2], context, *wireframe_color);
+			draw_line(points[0], points[2], context, *wireframe_color);
 		}
     }
 }
