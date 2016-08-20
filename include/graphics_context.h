@@ -27,7 +27,6 @@ struct graphics_context *create_context(context_type type, int width, int height
 void destroy_context(struct graphics_context *context);
 
 void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color color);
-void fill_triangle(vec2 p1, vec2 p2, vec2 p3, struct graphics_context *context, rgb_color color);
 void goraud_triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_context *context, float *point_depths);
 void clear(struct graphics_context *context, rgb_color color);
 void bmp_context_save(struct graphics_context *context, char name[]);
