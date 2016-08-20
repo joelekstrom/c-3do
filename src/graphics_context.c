@@ -196,7 +196,7 @@ void flat_bottom_goraud(struct point_data top,
 		float t = fmin((y - top.point->y) / (bottom_left.point->y - top.point->y), 1.0);
 
 		// Calculate left and right points
-		float left_x = bottom_left.point->x + ((top.point->x - bottom_left.point->x) * (1.0 - t));
+		float left_x = flerp(top.point->x, bottom_left.point->x, t);
 		float width = (bottom_right.point->x - bottom_left.point->x) * t;
 		float right_x = left_x + width;
 
@@ -210,9 +210,9 @@ void flat_bottom_goraud(struct point_data top,
 			float pixel_depth = Z_BUFFER_NONE;
 			float *depth_p = NULL;
 			if (top.depth) {
-				float left_depth = (*top.depth - *bottom_left.depth) * t + *bottom_left.depth;
-				float right_depth = (*top.depth - *bottom_right.depth) * t + *bottom_right.depth;
-				pixel_depth = (right_depth - left_depth) * tx + left_depth;
+				float left_depth = flerp(*bottom_left.depth, *top.depth, t);
+				float right_depth = flerp(*bottom_right.depth, *top.depth, t);
+				pixel_depth = flerp(right_depth, left_depth, tx);
 				depth_p = &pixel_depth;
 			}
 
@@ -234,7 +234,7 @@ void flat_top_goraud(struct point_data top_left,
 		float t = fmin(1.0 - (y - top_left.point->y) / (bottom.point->y - top_left.point->y), 1.0);
 
 		// Calculate left and right points
-		float left_x = top_left.point->x + ((bottom.point->x - top_left.point->x) * (1.0 - t));
+		float left_x = flerp(bottom.point->x, top_left.point->x, t);
 		float width = (top_right.point->x - top_left.point->x) * t;
 		float right_x = left_x + width;
 
@@ -248,9 +248,9 @@ void flat_top_goraud(struct point_data top_left,
 			float pixel_depth = Z_BUFFER_NONE;
 			float *depth_p = NULL;
 			if (bottom.depth) {
-				float left_depth = (*top_left.depth - *bottom.depth) * t + *bottom.depth;
-				float right_depth = (*top_right.depth - *bottom.depth) * t + *bottom.depth;
-				pixel_depth = (right_depth - left_depth) * tx + left_depth;
+				float left_depth = flerp(*bottom.depth, *top_left.depth, t);
+				float right_depth = flerp(*bottom.depth, *top_right.depth, t);
+				pixel_depth = flerp(left_depth, right_depth, tx);
 				depth_p = &pixel_depth;
 			}
 
