@@ -49,6 +49,13 @@ rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value) {
 	return result;
 }
 
+/**
+ Linearly interpolate, short "lerp", between two float values
+ */
+float flerp(float a, float b, float value) {
+	return a + (b - a) * value;
+}
+
 // ********** Z-buffering ***************
 float depth_buffer_get(int x, int y, struct graphics_context *context) {
 	return context->depth_buffer[context->width * x + y];  
@@ -315,17 +322,17 @@ void goraud_triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_conte
 		float t = (split_point.point->y - other_points[0].point->y) / (other_points[1].point->y - other_points[0].point->y);
 		vec2 new_point;
 		new_point.y = split_point.point->y;
-		new_point.x = (other_points[1].point->x - other_points[0].point->x) * t + other_points[0].point->x;
+		new_point.x = flerp(other_points[0].point->x, other_points[1].point->x, t);
 		rgb_color new_color = interpolate_color(*other_points[0].color, *other_points[1].color, t);
+		float new_depth = flerp(*other_points[0].depth, *other_points[1].depth, t);
 
-		// Call this function again with the new triangles
-		vec2 triangle1_points[] = { new_point, *split_point.point, *other_points[0].point };
-		rgb_color triangle1_colors[] = { new_color, *split_point.color, *other_points[0].color };
-		goraud_triangle(triangle1_points, triangle1_colors, context, point_depths);
-
-		vec2 triangle2_points[] = { new_point, *split_point.point, *other_points[1].point };
-		rgb_color triangle2_colors[] = { new_color, *split_point.color, *other_points[1].color };
-		goraud_triangle(triangle2_points, triangle2_colors, context, point_depths);
+		// Call this function twice for two new, splitted triangles
+		for (int i = 0; i < 2; i++) {
+			vec2 points[] = {new_point, *split_point.point, *other_points[i].point};
+			rgb_color colors[] = {new_color, *split_point.color, *other_points[i].color};
+			float depths[] = {new_depth, *split_point.depth, *other_points[i].depth};
+			goraud_triangle(points, colors, context, depths);
+		}
 	}
 }
 
