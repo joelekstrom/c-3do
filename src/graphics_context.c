@@ -58,6 +58,11 @@ float flerp(float a, float b, float value) {
 	return a + (b - a) * value;
 }
 
+vec2 vec2_lerp(vec2 a, vec2 b, float value) {
+	vec2 result = {.x = flerp(a.x, b.x, value), .y = flerp(a.y, b.y, value)};
+	return result;
+}
+
 // ********** Z-buffering ***************
 float depth_buffer_get(int x, int y, struct graphics_context *context) {
 	return context->depth_buffer[context->width * x + y];  
@@ -148,11 +153,20 @@ void clear(struct graphics_context *context, rgb_color color) {
  below so we can sort tuples easily top > left > right
  */
 struct point_data {
-	vec2 *point;
-	rgb_color *color;
-	vec2 *texture_coordinate;
-	float *depth;
+	vec2 point;
+	rgb_color color;
+	vec2 texture_coordinate;
+	float depth;
 };
+
+struct point_data interpolate_points(struct point_data a, struct point_data b, float value) {
+	struct point_data result;
+	result.point = vec2_lerp(a.point, b.point, value);
+	result.color = interpolate_color(a.color, b.color, value);
+	result.texture_coordinate = vec2_lerp(a.texture_coordinate, b.texture_coordinate, value);
+	result.depth = flerp(a.depth, b.depth, value);
+	return result;
+}
 
 /**
  Fills a goraud flat-bottomed triangle. Points/colors need to be sorted before, and
@@ -164,45 +178,27 @@ void flat_bottom_triangle(struct point_data top,
 						  struct texture *texture,
 						  struct graphics_context *context)
 {
-	for (int y = top.point->y; y < bottom_left.point->y + 0.5; y++) {
+	for (int y = top.point.y; y < bottom_left.point.y + 0.5; y++) {
 		// Interpolate between top and bottom so we can calculate a line width
-		float t = fmin((y - top.point->y) / (bottom_left.point->y - top.point->y), 1.0);
+		float t = fmin((y - top.point.y) / (bottom_left.point.y - top.point.y), 1.0);
 
 		// Calculate left and right points
-		float left_x = flerp(top.point->x, bottom_left.point->x, t);
-		float width = (bottom_right.point->x - bottom_left.point->x) * t;
-		float right_x = left_x + width;
+		struct point_data left_point = interpolate_points(top, bottom_left, t);
+		struct point_data right_point = interpolate_points(top, bottom_right, t);
+		int width = right_point.point.x - left_point.point.x;
 
-		float left_texture = flerp(top.texture_coordinate->x, bottom_left.texture_coordinate->x, t);
-		float right_texture = flerp(top.texture_coordinate->x, bottom_right.texture_coordinate->x, t);
-
-		rgb_color line_left_color = interpolate_color(*top.color, *bottom_left.color, t);
-		rgb_color line_right_color = interpolate_color(*top.color, *bottom_right.color, t);
-
-		for (int x = roundf(left_x); x < roundf(right_x); x++) {
-			float tx = (float)(x - left_x) / (float)width;
+		for (int x = roundf(left_point.point.x); x < roundf(right_point.point.x); x++) {
+			float tx = (float)(x - left_point.point.x) / (float)width;
+			struct point_data point_to_draw = interpolate_points(left_point, right_point, tx);
 
 			rgb_color pixel_color;
 			if (texture) {
-				vec2 tex_coord;
-				tex_coord.x = flerp(left_texture, right_texture, tx);
-				tex_coord.y = bottom_left.texture_coordinate->y;
-				pixel_color = texture_sample(*texture, tex_coord);
+				pixel_color = texture_sample(*texture, point_to_draw.texture_coordinate);
 			} else {
-				pixel_color = interpolate_color(line_left_color, line_right_color, tx);
+				pixel_color = point_to_draw.color;
 			}
-
-			// Calculate depth for z-buffering
-			float pixel_depth = Z_BUFFER_NONE;
-			float *depth_p = NULL;
-			if (top.depth) {
-				float left_depth = flerp(*bottom_left.depth, *top.depth, t);
-				float right_depth = flerp(*bottom_right.depth, *top.depth, t);
-				pixel_depth = flerp(right_depth, left_depth, tx);
-				depth_p = &pixel_depth;
-			}
-
-      		draw_pixel(x, y, context, pixel_color, depth_p);
+			
+      		draw_pixel(x, y, context, pixel_color, &point_to_draw.depth);
 		}
 	}
 }
@@ -216,45 +212,28 @@ void flat_top_triangle(struct point_data top_left,
 					   struct texture *texture,
 					   struct graphics_context *context)
 {
-	for (int y = bottom.point->y; y > top_left.point->y + 0.5; y--) {
+	for (int y = bottom.point.y; y > top_left.point.y + 0.5; y--) {
 		// Interpolate between top and bottom so we can calculate a line width
-		float t = fmin(1.0 - (y - top_left.point->y) / (bottom.point->y - top_left.point->y), 1.0);
+		float t = fmin(1.0 - (y - top_left.point.y) / (bottom.point.y - top_left.point.y), 1.0);
 
 		// Calculate left and right points
-		float left_x = flerp(bottom.point->x, top_left.point->x, t);
-		float width = (top_right.point->x - top_left.point->x) * t;
-		float right_x = left_x + width;
+		// Calculate left and right points
+		struct point_data left_point = interpolate_points(bottom, top_left, t);
+		struct point_data right_point = interpolate_points(bottom, top_right, t);
+		int width = right_point.point.x - left_point.point.x;
 
-		rgb_color line_left_color = interpolate_color(*bottom.color, *top_left.color, t);
-		rgb_color line_right_color = interpolate_color(*bottom.color, *top_right.color, t);
+		for (int x = roundf(left_point.point.x); x < roundf(right_point.point.x); x++) {
+			float tx = (float)(x - left_point.point.x) / (float)width;
+			struct point_data point_to_draw = interpolate_points(left_point, right_point, tx);
 
-		float left_texture = flerp(bottom.texture_coordinate->x, top_left.texture_coordinate->x, t);
-		float right_texture = flerp(bottom.texture_coordinate->x, top_right.texture_coordinate->x, t);
-
-		for (int x = roundf(left_x); x < roundf(right_x); x++) {
-			float tx = (float)(x - left_x) / (float)width;
-			
 			rgb_color pixel_color;
 			if (texture) {
-				vec2 tex_coord;
-				tex_coord.x = flerp(left_texture, right_texture, tx);
-				tex_coord.y = top_left.texture_coordinate->y;
-				pixel_color = texture_sample(*texture, tex_coord);
+				pixel_color = texture_sample(*texture, point_to_draw.texture_coordinate);
 			} else {
-				pixel_color = interpolate_color(line_left_color, line_right_color, tx);
+				pixel_color = point_to_draw.color;
 			}
 
-			// Calculate depth for z-buffering
-			float pixel_depth = Z_BUFFER_NONE;
-			float *depth_p = NULL;
-			if (bottom.depth) {
-				float left_depth = flerp(*bottom.depth, *top_left.depth, t);
-				float right_depth = flerp(*bottom.depth, *top_right.depth, t);
-				pixel_depth = flerp(left_depth, right_depth, tx);
-				depth_p = &pixel_depth;
-			}
-
-      		draw_pixel(x, y, context, pixel_color, depth_p);
+      		draw_pixel(x, y, context, pixel_color, &point_to_draw.depth);
 		}
 	}
 }
@@ -262,16 +241,16 @@ void flat_top_triangle(struct point_data top_left,
 int compare_points_x(const void *a, const void *b) {
 	struct point_data *p1 = (struct point_data *)a;
 	struct point_data *p2 = (struct point_data *)b;
-	if (p1->point->x < p2->point->x) return -1;
-	if (p1->point->x > p2->point->x) return 1;
+	if (p1->point.x < p2->point.x) return -1;
+	if (p1->point.x > p2->point.x) return 1;
 	return 0;
 }
 
 int compare_points_y(const void *a, const void *b) {
 	struct point_data *p1 = (struct point_data *)a;
 	struct point_data *p2 = (struct point_data *)b;
-	if (p1->point->y < p2->point->y) return -1;
-	if (p1->point->y > p2->point->y) return 1;
+	if (p1->point.y < p2->point.y) return -1;
+	if (p1->point.y > p2->point.y) return 1;
 	return 0;
 }
 
@@ -293,10 +272,10 @@ void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec
 	struct point_data points[3];
 	for (int i = 0; i < 3; ++i) {
 		struct point_data data;
-		data.point = &vectors[i];
-		data.color = &colors[i];
-		data.texture_coordinate = &texture_coordinates[i];
-		data.depth = point_depths != NULL ? &point_depths[i] : NULL;
+		data.point = vectors[i];
+		data.color = colors[i];
+		data.texture_coordinate = texture_coordinates[i];
+		data.depth = point_depths[i];
 		points[i] = data;
 	}
 
@@ -320,23 +299,15 @@ void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec
 		struct point_data other_points[] = { points[0], points[2] };
 
 		// Interpolate between the 'other' points to create a new point
-		float t = (split_point.point->y - other_points[0].point->y) / (other_points[1].point->y - other_points[0].point->y);
-		vec2 new_point;
-		new_point.y = split_point.point->y;
-		new_point.x = flerp(other_points[0].point->x, other_points[1].point->x, t);
-		rgb_color new_color = interpolate_color(*other_points[0].color, *other_points[1].color, t);
-		float new_depth = flerp(*other_points[0].depth, *other_points[1].depth, t);
+		float t = (split_point.point.y - other_points[0].point.y) / (other_points[1].point.y - other_points[0].point.y);
+		struct point_data new_point = interpolate_points(other_points[0], other_points[1], t);
 		
-		vec2 new_tex_coord;
-		new_tex_coord.y = split_point.texture_coordinate->y;
-		new_tex_coord.x = flerp(other_points[0].texture_coordinate->x, other_points[1].texture_coordinate->x, t);
-
 		// Call this function twice for two new, splitted triangles
 		for (int i = 0; i < 2; i++) {
-			vec2 points[] = {new_point, *split_point.point, *other_points[i].point};
-			rgb_color colors[] = {new_color, *split_point.color, *other_points[i].color};
-			float depths[] = {new_depth, *split_point.depth, *other_points[i].depth};
-			vec2 texture_coordinates[] = {new_tex_coord, *split_point.texture_coordinate, *other_points[i].texture_coordinate};
+			vec2 points[] = {new_point.point, split_point.point, other_points[i].point};
+			rgb_color colors[] = {new_point.color, split_point.color, other_points[i].color};
+			float depths[] = {new_point.depth, split_point.depth, other_points[i].depth};
+			vec2 texture_coordinates[] = {new_point.texture_coordinate, split_point.texture_coordinate, other_points[i].texture_coordinate};
 			triangle(points, colors, texture, texture_coordinates, context, depths);
 		}
 	}

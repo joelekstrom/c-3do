@@ -53,7 +53,7 @@ int main() {
     // transform_3d scale = transform_3d_make_scale(1.0, 1.0, 1.0);
     transform_3d translate = transform_3d_make_translation(0.0, 90.0, -70000.0);
     // transform_3d scale_and_translate = transform_3d_concat(scale, translate);
-    render(model, transform_3d_concat(flip_yz, translate), view, perspective, context, white, SHADING_TYPE_FLAT, &texture, NULL);
+    render(model, transform_3d_concat(flip_yz, translate), view, perspective, context, white, SHADING_TYPE_GORAUD, NULL, NULL);
 	
     unload_model(model);
     bmp_context_save(context, "output.bmp");
