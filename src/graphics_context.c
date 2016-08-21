@@ -152,16 +152,16 @@ void clear(struct graphics_context *context, rgb_color color) {
  A "tuple" which associates a vector with a color and depth. Comparing functions
  below so we can sort tuples easily top > left > right
  */
-struct point_data {
-	vec2 point;
+struct point {
+	vec2 position;
 	rgb_color color;
 	vec2 texture_coordinate;
 	float depth;
 };
 
-struct point_data interpolate_points(struct point_data a, struct point_data b, float value) {
-	struct point_data result;
-	result.point = vec2_lerp(a.point, b.point, value);
+struct point interpolate_points(struct point a, struct point b, float value) {
+	struct point result;
+	result.position = vec2_lerp(a.position, b.position, value);
 	result.color = interpolate_color(a.color, b.color, value);
 	result.texture_coordinate = vec2_lerp(a.texture_coordinate, b.texture_coordinate, value);
 	result.depth = flerp(a.depth, b.depth, value);
@@ -172,24 +172,24 @@ struct point_data interpolate_points(struct point_data a, struct point_data b, f
  Fills a goraud flat-bottomed triangle. Points/colors need to be sorted before, and
  bottom_left and bottom_right must have the same y-value, and it must be > top.y
  */
-void flat_bottom_triangle(struct point_data top,
-						  struct point_data bottom_left,
-						  struct point_data bottom_right,
+void flat_bottom_triangle(struct point top,
+						  struct point bottom_left,
+						  struct point bottom_right,
 						  struct texture *texture,
 						  struct graphics_context *context)
 {
-	for (int y = top.point.y; y < bottom_left.point.y + 0.5; y++) {
+	for (int y = top.position.y; y < bottom_left.position.y + 0.5; y++) {
 		// Interpolate between top and bottom so we can calculate a line width
-		float t = fmin((y - top.point.y) / (bottom_left.point.y - top.point.y), 1.0);
+		float t = fmin((y - top.position.y) / (bottom_left.position.y - top.position.y), 1.0);
 
 		// Calculate left and right points
-		struct point_data left_point = interpolate_points(top, bottom_left, t);
-		struct point_data right_point = interpolate_points(top, bottom_right, t);
-		int width = right_point.point.x - left_point.point.x;
+		struct point left_point = interpolate_points(top, bottom_left, t);
+		struct point right_point = interpolate_points(top, bottom_right, t);
+		int width = right_point.position.x - left_point.position.x;
 
-		for (int x = roundf(left_point.point.x); x < roundf(right_point.point.x); x++) {
-			float tx = (float)(x - left_point.point.x) / (float)width;
-			struct point_data point_to_draw = interpolate_points(left_point, right_point, tx);
+		for (int x = roundf(left_point.position.x); x < roundf(right_point.position.x); x++) {
+			float tx = (float)(x - left_point.position.x) / (float)width;
+			struct point point_to_draw = interpolate_points(left_point, right_point, tx);
 
 			rgb_color pixel_color;
 			if (texture) {
@@ -206,25 +206,25 @@ void flat_bottom_triangle(struct point_data top,
 /**
  Same as above but inverted
  */
-void flat_top_triangle(struct point_data top_left,
-					   struct point_data top_right,
-					   struct point_data bottom,
+void flat_top_triangle(struct point top_left,
+					   struct point top_right,
+					   struct point bottom,
 					   struct texture *texture,
 					   struct graphics_context *context)
 {
-	for (int y = bottom.point.y; y > top_left.point.y + 0.5; y--) {
+	for (int y = bottom.position.y; y > top_left.position.y + 0.5; y--) {
 		// Interpolate between top and bottom so we can calculate a line width
-		float t = fmin(1.0 - (y - top_left.point.y) / (bottom.point.y - top_left.point.y), 1.0);
+		float t = fmin(1.0 - (y - top_left.position.y) / (bottom.position.y - top_left.position.y), 1.0);
 
 		// Calculate left and right points
 		// Calculate left and right points
-		struct point_data left_point = interpolate_points(bottom, top_left, t);
-		struct point_data right_point = interpolate_points(bottom, top_right, t);
-		int width = right_point.point.x - left_point.point.x;
+		struct point left_point = interpolate_points(bottom, top_left, t);
+		struct point right_point = interpolate_points(bottom, top_right, t);
+		int width = right_point.position.x - left_point.position.x;
 
-		for (int x = roundf(left_point.point.x); x < roundf(right_point.point.x); x++) {
-			float tx = (float)(x - left_point.point.x) / (float)width;
-			struct point_data point_to_draw = interpolate_points(left_point, right_point, tx);
+		for (int x = roundf(left_point.position.x); x < roundf(right_point.position.x); x++) {
+			float tx = (float)(x - left_point.position.x) / (float)width;
+			struct point point_to_draw = interpolate_points(left_point, right_point, tx);
 
 			rgb_color pixel_color;
 			if (texture) {
@@ -239,18 +239,18 @@ void flat_top_triangle(struct point_data top_left,
 }
 
 int compare_points_x(const void *a, const void *b) {
-	struct point_data *p1 = (struct point_data *)a;
-	struct point_data *p2 = (struct point_data *)b;
-	if (p1->point.x < p2->point.x) return -1;
-	if (p1->point.x > p2->point.x) return 1;
+	struct point *p1 = (struct point *)a;
+	struct point *p2 = (struct point *)b;
+	if (p1->position.x < p2->position.x) return -1;
+	if (p1->position.x > p2->position.x) return 1;
 	return 0;
 }
 
 int compare_points_y(const void *a, const void *b) {
-	struct point_data *p1 = (struct point_data *)a;
-	struct point_data *p2 = (struct point_data *)b;
-	if (p1->point.y < p2->point.y) return -1;
-	if (p1->point.y > p2->point.y) return 1;
+	struct point *p1 = (struct point *)a;
+	struct point *p2 = (struct point *)b;
+	if (p1->position.y < p2->position.y) return -1;
+	if (p1->position.y > p2->position.y) return 1;
 	return 0;
 }
 
@@ -269,10 +269,10 @@ int compare_points(const void *a, const void *b) {
 void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec2 texture_coordinates[3], struct graphics_context *context, float *point_depths) {
 
 	// Build an array of point objects so we can sort vectors and colors together
-	struct point_data points[3];
+	struct point points[3];
 	for (int i = 0; i < 3; ++i) {
-		struct point_data data;
-		data.point = vectors[i];
+		struct point data;
+		data.position = vectors[i];
 		data.color = colors[i];
 		data.texture_coordinate = texture_coordinates[i];
 		data.depth = point_depths[i];
@@ -280,7 +280,7 @@ void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec
 	}
 
 	// Sort it top->left->right
-	qsort(&points, 3, sizeof(struct point_data), &compare_points);
+	qsort(&points, 3, sizeof(struct point), &compare_points);
 
 	// If the y-value of the first and second points are the same, we have a flat-top triangle
 	if (compare_points_y(&points[0], &points[1]) == 0) {
@@ -295,16 +295,16 @@ void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec
 	// If the triangle has neither a flat top, or flat bottom, it makes it very complicated to draw.
 	// Simplify it by splitting it into two triangles (one flat-top, and one flat-bottom)
 	else {
-		struct point_data split_point = points[1]; // We split the triangle on the middle-y point
-		struct point_data other_points[] = { points[0], points[2] };
+		struct point split_point = points[1]; // We split the triangle on the middle-y point
+		struct point other_points[] = { points[0], points[2] };
 
 		// Interpolate between the 'other' points to create a new point
-		float t = (split_point.point.y - other_points[0].point.y) / (other_points[1].point.y - other_points[0].point.y);
-		struct point_data new_point = interpolate_points(other_points[0], other_points[1], t);
+		float t = (split_point.position.y - other_points[0].position.y) / (other_points[1].position.y - other_points[0].position.y);
+		struct point new_point = interpolate_points(other_points[0], other_points[1], t);
 		
 		// Call this function twice for two new, splitted triangles
 		for (int i = 0; i < 2; i++) {
-			vec2 points[] = {new_point.point, split_point.point, other_points[i].point};
+			vec2 points[] = {new_point.position, split_point.position, other_points[i].position};
 			rgb_color colors[] = {new_point.color, split_point.color, other_points[i].color};
 			float depths[] = {new_point.depth, split_point.depth, other_points[i].depth};
 			vec2 texture_coordinates[] = {new_point.texture_coordinate, split_point.texture_coordinate, other_points[i].texture_coordinate};
