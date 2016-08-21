@@ -2,13 +2,19 @@
 #include <string.h>
 #include "obj.h"
 
-vec3 parse_vertex(FILE *fp) {
+vec3 parse_vertex_3f(FILE *fp) {
 	vec3 vertex;
-	fscanf(fp, "%f %f %f", &vertex.x, &vertex.y, & vertex.z);
+	fscanf(fp, "%f %f %f", &vertex.x, &vertex.y, &vertex.z);
 	return vertex;
 }
 
-struct face parse_face(FILE *fp, vec3 *vertices, vec3 *normals, vec3 *textures) {
+vec2 parse_vertex_2f(FILE *fp) {
+	vec2 vertex;
+	fscanf(fp, "%f %f", &vertex.x, &vertex.y);
+	return vertex;
+}
+
+struct face parse_face(FILE *fp, vec3 *vertices, vec3 *normals, vec2 *textures) {
 	struct face f;
 
 	// A face consists of 3 tokens (one for each corner), so we need to consume all of them
@@ -79,19 +85,20 @@ struct model load_model(FILE *fp) {
 		// Vertex
 		if (strcmp(token, "v") == 0) {
 			vertex_array_size = increase_size_if_needed((void **)&model.vertices, sizeof(vec3), model.num_vertices, vertex_array_size);
-			model.vertices[model.num_vertices++] = parse_vertex(fp);
+			model.vertices[model.num_vertices++] = parse_vertex_3f(fp);
 
 		} 
 
 		// Vertex normal
 		else if (strcmp(token, "vn") == 0) {
 			normal_array_size = increase_size_if_needed((void **)&model.normals, sizeof(vec3), model.num_normals, normal_array_size);
-			model.normals[model.num_normals++] = parse_vertex(fp);
+			model.normals[model.num_normals++] = parse_vertex_3f(fp);
 		} 
 
 		// Vertex texture
 		else if (strcmp(token, "vt") == 0) {
-			// Not yet implemented
+			texture_array_size = increase_size_if_needed((void **)&model.textures, sizeof(vec3), model.num_textures, texture_array_size);
+			model.textures[model.num_textures++] = parse_vertex_2f(fp);
 		}
 
 		// Face
@@ -101,7 +108,7 @@ struct model load_model(FILE *fp) {
 		}
 	}
 
-	printf("Loaded %i vertices, %i normals and %i faces.\n", model.num_vertices, model.num_normals, model.num_faces);
+	printf("Loaded %i vertices, %i normals, %i texture coordinates and %i faces.\n", model.num_vertices, model.num_normals, model.num_textures, model.num_faces);
 
 	return model;
 }

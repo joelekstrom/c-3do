@@ -24,6 +24,7 @@ void render(struct model model,
 			struct graphics_context *context, 
 			rgb_color color,
 			SHADING_TYPE shading_type,
+			struct texture *texture,
 			rgb_color *wireframe_color);
 
 int main() {
@@ -39,6 +40,7 @@ int main() {
     }
 
     struct model model = load_model(fp);
+	struct texture texture = load_texture("model/head_vcols.bmp");
     fclose(fp);
 
     // Center camera on 0.0 and a bit back
@@ -51,7 +53,7 @@ int main() {
     // transform_3d scale = transform_3d_make_scale(1.0, 1.0, 1.0);
     transform_3d translate = transform_3d_make_translation(0.0, 90.0, -70000.0);
     // transform_3d scale_and_translate = transform_3d_concat(scale, translate);
-    render(model, transform_3d_concat(flip_yz, translate), view, perspective, context, white, SHADING_TYPE_FLAT, &black);
+    render(model, transform_3d_concat(flip_yz, translate), view, perspective, context, white, SHADING_TYPE_FLAT, &texture, NULL);
 	
     unload_model(model);
     bmp_context_save(context, "output.bmp");
@@ -87,6 +89,7 @@ void render(struct model model,
 			struct graphics_context *context, 
 			rgb_color color,
 			SHADING_TYPE shading_type,
+			struct texture *texture,
 			rgb_color *wireframe_color)
 {
     for (int i = 0; i < model.num_faces; i++) {
@@ -120,8 +123,8 @@ void render(struct model model,
 			// Calculate a color from the view angle. We interpolate
 			// from color to black.
 			rgb_color shaded_color = interpolate_color(black, color, light_intensity);
-			rgb_color colors[] = { shaded_color, shaded_color, shaded_color }; // Goraud_triangle takes an array of colors
-			triangle(points, colors, context, depths);
+			rgb_color colors[] = {shaded_color, shaded_color, shaded_color}; // Goraud_triangle takes an array of colors
+			triangle(points, colors, texture, *f.textures, context, depths);
 		}
 
 		else if (shading_type == SHADING_TYPE_GORAUD) {
@@ -129,7 +132,7 @@ void render(struct model model,
 			for (int i = 0; i < 3; ++i) {
 				colors[i] = interpolate_color(black, color, dot_product_3d(*f.normals[i], vec3_unit(light_direction)));	
 			}
-			triangle(points, colors, context, depths);
+			triangle(points, colors, texture, *f.textures, context, depths);
 		}
 
 		// Wireframes

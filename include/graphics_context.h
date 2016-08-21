@@ -23,14 +23,27 @@ struct graphics_context {
 	void *_internal;
 };
 
+struct texture {
+	int width;
+	int height;
+	void *_internal;
+};
+
 struct graphics_context *create_context(context_type type, int width, int height);
 void destroy_context(struct graphics_context *context);
 
 void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color color);
-void triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_context *context, float *point_depths);
 void clear(struct graphics_context *context, rgb_color color);
 void bmp_context_save(struct graphics_context *context, char name[]);
 
 rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value);
+void triangle(vec2 vectors[3],
+			  rgb_color colors[3],
+			  struct texture *texture,
+			  vec2 texture_coordinates[3],
+			  struct graphics_context *context,
+			  float *point_depths);
+
+struct texture load_texture(char *file_name);
 
 #endif

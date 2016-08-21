@@ -7,6 +7,8 @@
 
 #define Z_BUFFER_NONE UINT_MAX
 
+rgb_color texture_sample(struct texture t, vec2 coordinate);
+
 struct graphics_context *create_context(context_type type, int width, int height) {
 	struct graphics_context *context = (struct graphics_context *)malloc(sizeof(struct graphics_context));
 	context->depth_buffer = (float *)malloc(sizeof(float) * width * height);
@@ -148,6 +150,7 @@ void clear(struct graphics_context *context, rgb_color color) {
 struct point_data {
 	vec2 *point;
 	rgb_color *color;
+	vec2 *texture_coordinate;
 	float *depth;
 };
 
@@ -158,6 +161,7 @@ struct point_data {
 void flat_bottom_triangle(struct point_data top,
 						  struct point_data bottom_left,
 						  struct point_data bottom_right,
+						  struct texture *texture,
 						  struct graphics_context *context)
 {
 	for (int y = top.point->y; y < bottom_left.point->y + 0.5; y++) {
@@ -169,11 +173,24 @@ void flat_bottom_triangle(struct point_data top,
 		float width = (bottom_right.point->x - bottom_left.point->x) * t;
 		float right_x = left_x + width;
 
+		float left_texture = flerp(top.texture_coordinate->x, bottom_left.texture_coordinate->x, t);
+		float right_texture = flerp(top.texture_coordinate->x, bottom_right.texture_coordinate->x, t);
+
 		rgb_color line_left_color = interpolate_color(*top.color, *bottom_left.color, t);
 		rgb_color line_right_color = interpolate_color(*top.color, *bottom_right.color, t);
 
 		for (int x = roundf(left_x); x < roundf(right_x); x++) {
 			float tx = (float)(x - left_x) / (float)width;
+
+			rgb_color pixel_color;
+			if (texture) {
+				vec2 tex_coord;
+				tex_coord.x = flerp(left_texture, right_texture, tx);
+				tex_coord.y = bottom_left.texture_coordinate->y;
+				pixel_color = texture_sample(*texture, tex_coord);
+			} else {
+				pixel_color = interpolate_color(line_left_color, line_right_color, tx);
+			}
 
 			// Calculate depth for z-buffering
 			float pixel_depth = Z_BUFFER_NONE;
@@ -185,7 +202,7 @@ void flat_bottom_triangle(struct point_data top,
 				depth_p = &pixel_depth;
 			}
 
-      		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx), depth_p);
+      		draw_pixel(x, y, context, pixel_color, depth_p);
 		}
 	}
 }
@@ -196,6 +213,7 @@ void flat_bottom_triangle(struct point_data top,
 void flat_top_triangle(struct point_data top_left,
 					   struct point_data top_right,
 					   struct point_data bottom,
+					   struct texture *texture,
 					   struct graphics_context *context)
 {
 	for (int y = bottom.point->y; y > top_left.point->y + 0.5; y--) {
@@ -210,8 +228,21 @@ void flat_top_triangle(struct point_data top_left,
 		rgb_color line_left_color = interpolate_color(*bottom.color, *top_left.color, t);
 		rgb_color line_right_color = interpolate_color(*bottom.color, *top_right.color, t);
 
+		float left_texture = flerp(bottom.texture_coordinate->x, top_left.texture_coordinate->x, t);
+		float right_texture = flerp(bottom.texture_coordinate->x, top_right.texture_coordinate->x, t);
+
 		for (int x = roundf(left_x); x < roundf(right_x); x++) {
 			float tx = (float)(x - left_x) / (float)width;
+			
+			rgb_color pixel_color;
+			if (texture) {
+				vec2 tex_coord;
+				tex_coord.x = flerp(left_texture, right_texture, tx);
+				tex_coord.y = top_left.texture_coordinate->y;
+				pixel_color = texture_sample(*texture, tex_coord);
+			} else {
+				pixel_color = interpolate_color(line_left_color, line_right_color, tx);
+			}
 
 			// Calculate depth for z-buffering
 			float pixel_depth = Z_BUFFER_NONE;
@@ -223,7 +254,7 @@ void flat_top_triangle(struct point_data top_left,
 				depth_p = &pixel_depth;
 			}
 
-      		draw_pixel(x, y, context, interpolate_color(line_left_color, line_right_color, tx), depth_p);
+      		draw_pixel(x, y, context, pixel_color, depth_p);
 		}
 	}
 }
@@ -256,7 +287,7 @@ int compare_points(const void *a, const void *b) {
  This function sorts the points/colors and splits the triangle if needed,
  and then delegates drawing to flat_top/flat_bottom_goraud
  */
-void triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_context *context, float *point_depths) {
+void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec2 texture_coordinates[3], struct graphics_context *context, float *point_depths) {
 
 	// Build an array of point objects so we can sort vectors and colors together
 	struct point_data points[3];
@@ -264,6 +295,7 @@ void triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_context *con
 		struct point_data data;
 		data.point = &vectors[i];
 		data.color = &colors[i];
+		data.texture_coordinate = &texture_coordinates[i];
 		data.depth = point_depths != NULL ? &point_depths[i] : NULL;
 		points[i] = data;
 	}
@@ -273,12 +305,12 @@ void triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_context *con
 
 	// If the y-value of the first and second points are the same, we have a flat-top triangle
 	if (compare_points_y(&points[0], &points[1]) == 0) {
-		flat_top_triangle(points[0], points[1], points[2], context);
+		flat_top_triangle(points[0], points[1], points[2], texture, context);
 	} 
 
 	// ... And if the second and third have the same y-value, we have a flat-bottom triangle
 	else if (compare_points_y(&points[1], &points[2]) == 0) {
-		flat_bottom_triangle(points[0], points[1], points[2], context);
+		flat_bottom_triangle(points[0], points[1], points[2], texture, context);
 	} 
 
 	// If the triangle has neither a flat top, or flat bottom, it makes it very complicated to draw.
@@ -294,14 +326,35 @@ void triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_context *con
 		new_point.x = flerp(other_points[0].point->x, other_points[1].point->x, t);
 		rgb_color new_color = interpolate_color(*other_points[0].color, *other_points[1].color, t);
 		float new_depth = flerp(*other_points[0].depth, *other_points[1].depth, t);
+		
+		vec2 new_tex_coord;
+		new_tex_coord.y = split_point.texture_coordinate->y;
+		new_tex_coord.x = flerp(other_points[0].texture_coordinate->x, other_points[1].texture_coordinate->x, t);
 
 		// Call this function twice for two new, splitted triangles
 		for (int i = 0; i < 2; i++) {
 			vec2 points[] = {new_point, *split_point.point, *other_points[i].point};
 			rgb_color colors[] = {new_color, *split_point.color, *other_points[i].color};
 			float depths[] = {new_depth, *split_point.depth, *other_points[i].depth};
-			triangle(points, colors, context, depths);
+			vec2 texture_coordinates[] = {new_tex_coord, *split_point.texture_coordinate, *other_points[i].texture_coordinate};
+			triangle(points, colors, texture, texture_coordinates, context, depths);
 		}
 	}
 }
 
+/******* Textures *********/
+
+struct texture load_texture(char *file_name) {
+	struct texture texture;
+	bmp_t *bitmap = load_bmp(file_name);
+	texture._internal = bitmap;
+	texture.width = bitmap->info.w;
+	texture.height = bitmap->info.h;
+	return texture;
+}
+
+rgb_color texture_sample(struct texture t, vec2 coordinate) {
+	rgb_color color;
+	get_pixel(t._internal, (int)(coordinate.x * t.width), (int)(coordinate.y * t.height), &color.r, &color.g, &color.b);
+	return color;
+}

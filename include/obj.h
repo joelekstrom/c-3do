@@ -7,7 +7,7 @@
 struct face {
 	vec3 *vertices[3];
 	vec3 *normals[3];
-	vec3 *textures[3];
+	vec2 *textures[3];
 };
 
 struct model {
@@ -18,7 +18,7 @@ struct model {
 
 	vec3 *vertices;
 	vec3 *normals;
-	vec3 *textures;
+	vec2 *textures;
 	struct face *faces;
 };
 
