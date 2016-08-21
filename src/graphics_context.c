@@ -168,6 +168,16 @@ struct point interpolate_points(struct point a, struct point b, float value) {
 	return result;
 }
 
+void draw_point(struct point p, struct graphics_context *context, struct texture *texture) {
+	rgb_color pixel_color;
+	if (texture) {
+		pixel_color = texture_sample(*texture, p.texture_coordinate);
+	} else {
+		pixel_color = p.color;
+	}
+	draw_pixel(roundf(p.position.x), roundf(p.position.y), context, pixel_color, &p.depth);
+}
+
 /**
  Fills a goraud flat-bottomed triangle. Points/colors need to be sorted before, and
  bottom_left and bottom_right must have the same y-value, and it must be > top.y
@@ -178,27 +188,20 @@ void flat_bottom_triangle(struct point top,
 						  struct texture *texture,
 						  struct graphics_context *context)
 {
-	for (int y = top.position.y; y < bottom_left.position.y + 0.5; y++) {
-		// Interpolate between top and bottom so we can calculate a line width
-		float t = fmin((y - top.position.y) / (bottom_left.position.y - top.position.y), 1.0);
+	int height = roundf(bottom_left.position.y) - roundf(top.position.y);
+	draw_point(top, context, texture);
+	for (int y = 1; y <= height; y++) {
+		float t = (float)y / (float)height;
 
 		// Calculate left and right points
 		struct point left_point = interpolate_points(top, bottom_left, t);
 		struct point right_point = interpolate_points(top, bottom_right, t);
-		int width = right_point.position.x - left_point.position.x;
+		int width = roundf(right_point.position.x) - roundf(left_point.position.x);
 
-		for (int x = roundf(left_point.position.x); x < roundf(right_point.position.x); x++) {
-			float tx = (float)(x - left_point.position.x) / (float)width;
+		for (int x = 0; x <= width; x++) {
+			float tx = (float)x / (float)width;
 			struct point point_to_draw = interpolate_points(left_point, right_point, tx);
-
-			rgb_color pixel_color;
-			if (texture) {
-				pixel_color = texture_sample(*texture, point_to_draw.texture_coordinate);
-			} else {
-				pixel_color = point_to_draw.color;
-			}
-			
-      		draw_pixel(x, y, context, pixel_color, &point_to_draw.depth);
+			draw_point(point_to_draw, context, texture);
 		}
 	}
 }
@@ -212,28 +215,20 @@ void flat_top_triangle(struct point top_left,
 					   struct texture *texture,
 					   struct graphics_context *context)
 {
-	for (int y = bottom.position.y; y > top_left.position.y + 0.5; y--) {
-		// Interpolate between top and bottom so we can calculate a line width
-		float t = fmin(1.0 - (y - top_left.position.y) / (bottom.position.y - top_left.position.y), 1.0);
+	int height = roundf(bottom.position.y) - roundf(top_left.position.y);
+	draw_point(bottom, context, texture);
+	for (int y = 1; y <= height; y++) {
+		float t = (float)y / (float)height;
 
 		// Calculate left and right points
-		// Calculate left and right points
-		struct point left_point = interpolate_points(bottom, top_left, t);
-		struct point right_point = interpolate_points(bottom, top_right, t);
-		int width = right_point.position.x - left_point.position.x;
+		struct point left_point = interpolate_points(top_left, bottom, t);
+		struct point right_point = interpolate_points(top_right, bottom, t);
+		int width = roundf(right_point.position.x) - roundf(left_point.position.x);
 
-		for (int x = roundf(left_point.position.x); x < roundf(right_point.position.x); x++) {
-			float tx = (float)(x - left_point.position.x) / (float)width;
+		for (int x = 0; x <= width; x++) {
+			float tx = (float)x / (float)width;
 			struct point point_to_draw = interpolate_points(left_point, right_point, tx);
-
-			rgb_color pixel_color;
-			if (texture) {
-				pixel_color = texture_sample(*texture, point_to_draw.texture_coordinate);
-			} else {
-				pixel_color = point_to_draw.color;
-			}
-
-      		draw_pixel(x, y, context, pixel_color, &point_to_draw.depth);
+			draw_point(point_to_draw, context, texture);
 		}
 	}
 }
