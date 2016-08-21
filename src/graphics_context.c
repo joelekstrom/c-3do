@@ -155,10 +155,10 @@ struct point_data {
  Fills a goraud flat-bottomed triangle. Points/colors need to be sorted before, and
  bottom_left and bottom_right must have the same y-value, and it must be > top.y
  */
-void flat_bottom_goraud(struct point_data top, 
-						struct point_data bottom_left, 
-						struct point_data bottom_right,
-						struct graphics_context *context) 
+void flat_bottom_triangle(struct point_data top,
+						  struct point_data bottom_left,
+						  struct point_data bottom_right,
+						  struct graphics_context *context)
 {
 	for (int y = top.point->y; y < bottom_left.point->y + 0.5; y++) {
 		// Interpolate between top and bottom so we can calculate a line width
@@ -193,10 +193,10 @@ void flat_bottom_goraud(struct point_data top,
 /**
  Same as above but inverted
  */
-void flat_top_goraud(struct point_data top_left, 
-					 struct point_data top_right, 
-					 struct point_data bottom,
-					 struct graphics_context *context) 
+void flat_top_triangle(struct point_data top_left,
+					   struct point_data top_right,
+					   struct point_data bottom,
+					   struct graphics_context *context)
 {
 	for (int y = bottom.point->y; y > top_left.point->y + 0.5; y--) {
 		// Interpolate between top and bottom so we can calculate a line width
@@ -256,7 +256,7 @@ int compare_points(const void *a, const void *b) {
  This function sorts the points/colors and splits the triangle if needed,
  and then delegates drawing to flat_top/flat_bottom_goraud
  */
-void goraud_triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_context *context, float *point_depths) {
+void triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_context *context, float *point_depths) {
 
 	// Build an array of point objects so we can sort vectors and colors together
 	struct point_data points[3];
@@ -273,12 +273,12 @@ void goraud_triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_conte
 
 	// If the y-value of the first and second points are the same, we have a flat-top triangle
 	if (compare_points_y(&points[0], &points[1]) == 0) {
-		flat_top_goraud(points[0], points[1], points[2], context);
+		flat_top_triangle(points[0], points[1], points[2], context);
 	} 
 
 	// ... And if the second and third have the same y-value, we have a flat-bottom triangle
 	else if (compare_points_y(&points[1], &points[2]) == 0) {
-		flat_bottom_goraud(points[0], points[1], points[2], context);
+		flat_bottom_triangle(points[0], points[1], points[2], context);
 	} 
 
 	// If the triangle has neither a flat top, or flat bottom, it makes it very complicated to draw.
@@ -300,7 +300,7 @@ void goraud_triangle(vec2 vectors[3], rgb_color colors[3], struct graphics_conte
 			vec2 points[] = {new_point, *split_point.point, *other_points[i].point};
 			rgb_color colors[] = {new_color, *split_point.color, *other_points[i].color};
 			float depths[] = {new_depth, *split_point.depth, *other_points[i].depth};
-			goraud_triangle(points, colors, context, depths);
+			triangle(points, colors, context, depths);
 		}
 	}
 }
