@@ -178,61 +178,6 @@ void draw_point(struct point p, struct graphics_context *context, struct texture
 	draw_pixel(roundf(p.position.x), roundf(p.position.y), context, pixel_color, &p.depth);
 }
 
-/**
- Fills a goraud flat-bottomed triangle. Points/colors need to be sorted before, and
- bottom_left and bottom_right must have the same y-value, and it must be > top.y
- */
-void flat_bottom_triangle(struct point top,
-						  struct point bottom_left,
-						  struct point bottom_right,
-						  struct texture *texture,
-						  struct graphics_context *context)
-{
-	int height = roundf(bottom_left.position.y) - roundf(top.position.y);
-	draw_point(top, context, texture);
-	for (int y = 1; y <= height; y++) {
-		float t = (float)y / (float)height;
-
-		// Calculate left and right points
-		struct point left_point = interpolate_points(top, bottom_left, t);
-		struct point right_point = interpolate_points(top, bottom_right, t);
-		int width = roundf(right_point.position.x) - roundf(left_point.position.x);
-
-		for (int x = 0; x <= width; x++) {
-			float tx = (float)x / (float)width;
-			struct point point_to_draw = interpolate_points(left_point, right_point, tx);
-			draw_point(point_to_draw, context, texture);
-		}
-	}
-}
-
-/**
- Same as above but inverted
- */
-void flat_top_triangle(struct point top_left,
-					   struct point top_right,
-					   struct point bottom,
-					   struct texture *texture,
-					   struct graphics_context *context)
-{
-	int height = roundf(bottom.position.y) - roundf(top_left.position.y);
-	draw_point(bottom, context, texture);
-	for (int y = 1; y <= height; y++) {
-		float t = (float)y / (float)height;
-
-		// Calculate left and right points
-		struct point left_point = interpolate_points(top_left, bottom, t);
-		struct point right_point = interpolate_points(top_right, bottom, t);
-		int width = roundf(right_point.position.x) - roundf(left_point.position.x);
-
-		for (int x = 0; x <= width; x++) {
-			float tx = (float)x / (float)width;
-			struct point point_to_draw = interpolate_points(left_point, right_point, tx);
-			draw_point(point_to_draw, context, texture);
-		}
-	}
-}
-
 int compare_points_x(const void *a, const void *b) {
 	struct point *p1 = (struct point *)a;
 	struct point *p2 = (struct point *)b;
@@ -257,9 +202,38 @@ int compare_points(const void *a, const void *b) {
 }
 
 /**
+ Fills a "flat triangle". Points/colors need to be sorted before, and
+ left_leg and right_leg must have the same y-value.
+ */
+void flat_triangle(struct point anchor,
+				   struct point left_leg,
+				   struct point right_leg,
+				   struct texture *texture,
+				   struct graphics_context *context)
+{
+	int height = abs((int)roundf(anchor.position.y) - (int)roundf(left_leg.position.y));
+	draw_point(anchor, context, texture);
+		
+	for (int y = 1; y <= height; y++) {
+		float t = (float)y / (float)height;
+
+		// Calculate left and right points
+		struct point left_point = interpolate_points(anchor, left_leg, t);
+		struct point right_point = interpolate_points(anchor, right_leg, t);
+		int width = roundf(right_point.position.x) - roundf(left_point.position.x);
+
+		for (int x = 0; x <= width; x++) {
+			float tx = (float)x / (float)width;
+			struct point point_to_draw = interpolate_points(left_point, right_point, tx);
+			draw_point(point_to_draw, context, texture);
+		}
+	}
+}
+
+/**
  Fills a goraud triangle (each vertex has a color which interpolates).
  This function sorts the points/colors and splits the triangle if needed,
- and then delegates drawing to flat_top/flat_bottom_goraud
+ and then delegates drawing to flat_triangle.
  */
 void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec2 texture_coordinates[3], struct graphics_context *context, float *point_depths) {
 
@@ -279,12 +253,12 @@ void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec
 
 	// If the y-value of the first and second points are the same, we have a flat-top triangle
 	if (compare_points_y(&points[0], &points[1]) == 0) {
-		flat_top_triangle(points[0], points[1], points[2], texture, context);
+		flat_triangle(points[2], points[0], points[1], texture, context);
 	} 
 
 	// ... And if the second and third have the same y-value, we have a flat-bottom triangle
 	else if (compare_points_y(&points[1], &points[2]) == 0) {
-		flat_bottom_triangle(points[0], points[1], points[2], texture, context);
+		flat_triangle(points[0], points[1], points[2], texture, context);
 	} 
 
 	// If the triangle has neither a flat top, or flat bottom, it makes it very complicated to draw.
