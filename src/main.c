@@ -50,8 +50,8 @@ int main() {
     transform_3d flip_yz = transform_3d_identity;
     flip_yz.sy = -1.0;
     flip_yz.sz = -1.0;
-    transform_3d scale = transform_3d_make_scale(300.0, 300.0, 300.0);
-    transform_3d translate = transform_3d_make_translation(0.0, 200.0, 1.0);
+    transform_3d scale = transform_3d_make_scale(400.0, 400.0, 400.0);
+    transform_3d translate = transform_3d_make_translation(0.0, 300.0, 1.0);
     transform_3d scale_and_translate = transform_3d_concat(scale, translate);
     render(model, transform_3d_concat(flip_yz, scale_and_translate), view, perspective, context, white, SHADING_TYPE_GORAUD, &texture, NULL);
 	
@@ -127,16 +127,19 @@ void render(struct model model,
 			// from color to black.
 			rgb_color shaded_color = interpolate_color(black, color, light_intensity);
 			rgb_color colors[] = {shaded_color, shaded_color, shaded_color}; // Goraud_triangle takes an array of colors
-			triangle(points, colors, texture, *f.textures, context, depths);
+			float intensities[] = {light_intensity, light_intensity, light_intensity};
+			triangle(points, colors, intensities, texture, *f.textures, context, depths);
 		}
 
 		else if (shading_type == SHADING_TYPE_GORAUD) {
 			rgb_color colors[3];
+			float intensities[3];
 			for (int i = 0; i < 3; ++i) {
-				colors[i] = interpolate_color(black, color, dot_product_3d(*f.normals[i], vec3_unit(light_direction)));	
-			}
-			
-			triangle(points, colors, texture, textures, context, depths);
+				float intensity = dot_product_3d(*f.normals[i], vec3_unit(light_direction));
+				colors[i] = interpolate_color(black, color, intensity);
+				intensities[i] = intensity;
+			}	
+			triangle(points, colors, intensities, texture, textures, context, depths);
 		}
 
 		// Wireframes

@@ -39,6 +39,7 @@ void bmp_context_save(struct graphics_context *context, char name[]);
 rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value);
 void triangle(vec2 vectors[3],
 			  rgb_color colors[3],
+			  float light_intensities[3],
 			  struct texture *texture,
 			  vec2 texture_coordinates[3],
 			  struct graphics_context *context,

@@ -44,6 +44,13 @@ void bmp_context_save(struct graphics_context *context, char name[]) {
 	}
 }
 
+rgb_color multiply_color(rgb_color color, float value) {
+	rgb_color result = { .r = color.r * value,
+                         .g = color.g * value,
+                         .b = color.b * value };
+	return result;
+}
+
 rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value) {
 	rgb_color result = { .r = c1.r + (c2.r - c1.r) * value,
                          .g = c1.g + (c2.g - c1.g) * value,
@@ -155,6 +162,7 @@ void clear(struct graphics_context *context, rgb_color color) {
 struct point {
 	vec2 position;
 	rgb_color color;
+	float intensity;
 	vec2 texture_coordinate;
 	float depth;
 };
@@ -163,6 +171,7 @@ struct point interpolate_points(struct point a, struct point b, float value) {
 	struct point result;
 	result.position = vec2_lerp(a.position, b.position, value);
 	result.color = interpolate_color(a.color, b.color, value);
+	result.intensity = flerp(a.intensity, b.intensity, value);
 	result.texture_coordinate = vec2_lerp(a.texture_coordinate, b.texture_coordinate, value);
 	result.depth = flerp(a.depth, b.depth, value);
 	return result;
@@ -175,6 +184,7 @@ void draw_point(struct point p, struct graphics_context *context, struct texture
 	} else {
 		pixel_color = p.color;
 	}
+	pixel_color = multiply_color(pixel_color, p.intensity);
 	draw_pixel(roundf(p.position.x), roundf(p.position.y), context, pixel_color, &p.depth);
 }
 
@@ -272,12 +282,13 @@ void triangle_p(struct point points[3], struct texture *texture, struct graphics
  The external interface for triangle drawings. Given arrays of vectors, colors, texture coords
  etc, it converts this data into struct point objects and delegates drawing to triangle_p.
  */
-void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec2 texture_coordinates[3], struct graphics_context *context, float *point_depths) {
+void triangle(vec2 vectors[3], rgb_color colors[3], float light_intensities[3], struct texture *texture, vec2 texture_coordinates[3], struct graphics_context *context, float *point_depths) {
 	struct point points[3];
 	for (int i = 0; i < 3; ++i) {
 		struct point data;
 		data.position = vectors[i];
 		data.color = colors[i];
+		data.intensity = light_intensities[i];
 		data.texture_coordinate = texture_coordinates[i];
 		data.depth = point_depths[i];
 		points[i] = data;
