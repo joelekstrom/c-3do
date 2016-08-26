@@ -33,7 +33,7 @@ int main() {
     clear(context, black);
 
 	// load .sob-file
-    FILE *fp = fopen("model/Head_Triangulated.obj", "r");
+    FILE *fp = fopen("model/head.obj", "r");
     if (!fp) {
 		fprintf(stderr, "Failed to open model file");
 		return 1;
@@ -50,10 +50,10 @@ int main() {
     transform_3d flip_yz = transform_3d_identity;
     flip_yz.sy = -1.0;
     flip_yz.sz = -1.0;
-    // transform_3d scale = transform_3d_make_scale(1.0, 1.0, 1.0);
-    transform_3d translate = transform_3d_make_translation(0.0, 90.0, -70000.0);
-    // transform_3d scale_and_translate = transform_3d_concat(scale, translate);
-    render(model, transform_3d_concat(flip_yz, translate), view, perspective, context, white, SHADING_TYPE_GORAUD, NULL, NULL);
+    transform_3d scale = transform_3d_make_scale(300.0, 300.0, 300.0);
+    transform_3d translate = transform_3d_make_translation(0.0, 200.0, 1.0);
+    transform_3d scale_and_translate = transform_3d_concat(scale, translate);
+    render(model, transform_3d_concat(flip_yz, scale_and_translate), view, perspective, context, white, SHADING_TYPE_GORAUD, &texture, NULL);
 	
     unload_model(model);
     bmp_context_save(context, "output.bmp");
@@ -98,10 +98,12 @@ void render(struct model model,
 		// Position vertices in view and apply any transformations
 		transform_3d t = transform_3d_concat(transform, view);
 		vec3 vertices[3];
+		vec2 textures[3];
 		float depths[3];
 		for (int i = 0; i < 3; ++i) {
 			vertices[i] = transform_3d_apply(*f.vertices[i], t);
 			depths[i] = vertices[i].z;
+			textures[i] = *f.textures[i];
 		}
 
 		vec3 view_point = {0, 0, 0};
@@ -109,13 +111,14 @@ void render(struct model model,
 		vec3 face_normal = surface_normal(vertices);
 		vec3 light_direction = {0.0, 0.0, 1.0};
 		float light_intensity = dot_product_3d(face_normal, vec3_unit(light_direction));
-		if (light_intensity < 0.0)
+		if (light_intensity < 0.0) {
 			continue; // Back-face culling
-
+		}
+		
 		// Apply perspective (map 3D-coordinates to a 2D-space)
 		vec2 points[3];
-		for (int i = 0; i < 3; ++i) {
-			points[i] = apply_perspective(vertices[i], view_point, perspective);
+		for (int p = 0; p < 3; ++p) {
+			points[p] = apply_perspective(vertices[p], view_point, perspective);
 		}
 
 		// Flat shading
@@ -132,7 +135,8 @@ void render(struct model model,
 			for (int i = 0; i < 3; ++i) {
 				colors[i] = interpolate_color(black, color, dot_product_3d(*f.normals[i], vec3_unit(light_direction)));	
 			}
-			triangle(points, colors, texture, *f.textures, context, depths);
+			
+			triangle(points, colors, texture, textures, context, depths);
 		}
 
 		// Wireframes

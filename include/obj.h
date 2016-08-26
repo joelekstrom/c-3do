@@ -24,5 +24,6 @@ struct model {
 
 struct model load_model(FILE *fp);
 void unload_model(struct model model);
+void inspect_model(struct model model);
 
 #endif

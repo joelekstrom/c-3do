@@ -235,21 +235,10 @@ void flat_triangle(struct point anchor,
  This function sorts the points/colors and splits the triangle if needed,
  and then delegates drawing to flat_triangle.
  */
-void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec2 texture_coordinates[3], struct graphics_context *context, float *point_depths) {
+void triangle_p(struct point points[3], struct texture *texture, struct graphics_context *context) {
 
-	// Build an array of point objects so we can sort vectors and colors together
-	struct point points[3];
-	for (int i = 0; i < 3; ++i) {
-		struct point data;
-		data.position = vectors[i];
-		data.color = colors[i];
-		data.texture_coordinate = texture_coordinates[i];
-		data.depth = point_depths[i];
-		points[i] = data;
-	}
-
-	// Sort it top->left->right
-	qsort(&points, 3, sizeof(struct point), &compare_points);
+	// Sort points it top->left->right
+	qsort(points, 3, sizeof(struct point), &compare_points);
 
 	// If the y-value of the first and second points are the same, we have a flat-top triangle
 	if (compare_points_y(&points[0], &points[1]) == 0) {
@@ -266,20 +255,34 @@ void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec
 	else {
 		struct point split_point = points[1]; // We split the triangle on the middle-y point
 		struct point other_points[] = { points[0], points[2] };
-
+		
 		// Interpolate between the 'other' points to create a new point
 		float t = (split_point.position.y - other_points[0].position.y) / (other_points[1].position.y - other_points[0].position.y);
 		struct point new_point = interpolate_points(other_points[0], other_points[1], t);
 		
 		// Call this function twice for two new, splitted triangles
 		for (int i = 0; i < 2; i++) {
-			vec2 points[] = {new_point.position, split_point.position, other_points[i].position};
-			rgb_color colors[] = {new_point.color, split_point.color, other_points[i].color};
-			float depths[] = {new_point.depth, split_point.depth, other_points[i].depth};
-			vec2 texture_coordinates[] = {new_point.texture_coordinate, split_point.texture_coordinate, other_points[i].texture_coordinate};
-			triangle(points, colors, texture, texture_coordinates, context, depths);
+			struct point points[] = {new_point, split_point, other_points[i]};
+			triangle_p(points, texture, context);
 		}
 	}
+}
+
+/**
+ The external interface for triangle drawings. Given arrays of vectors, colors, texture coords
+ etc, it converts this data into struct point objects and delegates drawing to triangle_p.
+ */
+void triangle(vec2 vectors[3], rgb_color colors[3], struct texture *texture, vec2 texture_coordinates[3], struct graphics_context *context, float *point_depths) {
+	struct point points[3];
+	for (int i = 0; i < 3; ++i) {
+		struct point data;
+		data.position = vectors[i];
+		data.color = colors[i];
+		data.texture_coordinate = texture_coordinates[i];
+		data.depth = point_depths[i];
+		points[i] = data;
+	}
+	triangle_p(points, texture, context);
 }
 
 /******* Textures *********/
