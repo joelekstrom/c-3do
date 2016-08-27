@@ -49,9 +49,16 @@ rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value);
  Draws a 2D triangle. Uses the Z-value of the coordinates for Z-buffering,
  so the Z-value has no visual meaning, and is only used if the graphics
  context has a Z-buffer enabled.
+
+ The shader input can be anything that the rendering program wants to
+ input to its shader functions.
+
+ The vertex shader is a function that receives a pointer to a vertex,
+ which it is then allowed to transform/change colors of.
  */
 void triangle(struct vertex vertices[3],
 			  void *shader_input,
+			  void (*vertex_shader)(struct vertex *v, void *input),
 			  struct graphics_context *context);
 
 struct texture load_texture(char *file_name);

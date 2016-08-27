@@ -173,9 +173,8 @@ struct vertex vertex_lerp(struct vertex a, struct vertex b, float value) {
 	return result;
 }
 
-void draw_point(struct vertex p, void *shader_input, struct graphics_context *context) {
-	rgb_color pixel_color = p.color;
-	draw_pixel(p.coordinate, pixel_color, true, context);
+void draw_point(struct vertex p, void *shader_input, void (*vertex_shader)(struct vertex *v, void *input), struct graphics_context *context) {
+	draw_pixel(p.coordinate, p.color, true, context);
 }
 
 int compare_vertices_x(const void *a, const void *b) {
@@ -209,10 +208,11 @@ void flat_triangle(struct vertex anchor,
 				   struct vertex left_leg,
 				   struct vertex right_leg,
 				   void *shader_input,
+				   void (*vertex_shader)(struct vertex *v, void *input),
 				   struct graphics_context *context)
 {
 	int height = abs((int)roundf(anchor.coordinate.y) - (int)roundf(left_leg.coordinate.y));
-	draw_point(anchor, shader_input, context);
+	draw_point(anchor, shader_input, vertex_shader, context);
 		
 	for (int y = 1; y <= height; y++) {
 		float t = (float)y / (float)height;
@@ -225,7 +225,7 @@ void flat_triangle(struct vertex anchor,
 		for (int x = 0; x <= width; x++) {
 			float tx = (float)x / (float)width;
 			struct vertex point_to_draw = vertex_lerp(left_point, right_point, tx);
-			draw_point(point_to_draw, shader_input, context);
+			draw_point(point_to_draw, shader_input, vertex_shader, context);
 		}
 	}
 }
@@ -235,19 +235,29 @@ void flat_triangle(struct vertex anchor,
  This function sorts the points/colors and splits the triangle if needed,
  and then delegates drawing to flat_triangle.
  */
-void triangle(struct vertex vertices[3], void *shader_input, struct graphics_context *context) {
-
+void triangle(struct vertex vertices[3],
+			  void *shader_input,
+			  void (*vertex_shader)(struct vertex *v, void *input),
+			  struct graphics_context *context)
+{
+	// Start by applying the vertex shader so we get correct coordinates/colors
+	if (vertex_shader) {
+		for (int i = 0; i < 3; i++) {
+			vertex_shader(&vertices[i], shader_input);
+		}
+	}
+	
 	// Sort points it top->left->right
 	qsort(vertices, 3, sizeof(struct vertex), &compare_vertices);
 
 	// If the y-value of the first and second vertices are the same, we have a flat-top triangle
 	if (compare_vertices_y(&vertices[0], &vertices[1]) == 0) {
-		flat_triangle(vertices[2], vertices[0], vertices[1], shader_input, context);
+		flat_triangle(vertices[2], vertices[0], vertices[1], shader_input, vertex_shader, context);
 	} 
 
 	// ... And if the second and third have the same y-value, we have a flat-bottom triangle
 	else if (compare_vertices_y(&vertices[1], &vertices[2]) == 0) {
-		flat_triangle(vertices[0], vertices[1], vertices[2], shader_input, context);
+		flat_triangle(vertices[0], vertices[1], vertices[2], shader_input, vertex_shader, context);
 	} 
 
 	// If the triangle has neither a flat top, or flat bottom, it makes it very complicated to draw.
@@ -263,7 +273,7 @@ void triangle(struct vertex vertices[3], void *shader_input, struct graphics_con
 		// Call this function twice for two new, splitted triangles
 		for (int i = 0; i < 2; i++) {
 			struct vertex vertices[] = {new_point, split_point, other_vertices[i]};
-			triangle(vertices, shader_input, context);
+			triangle(vertices, shader_input, vertex_shader, context);
 		}
 	}
 }

@@ -73,6 +73,19 @@ vec3 apply_perspective(vec3 position, vec3 view_point, float amount) {
     return result;
 }
 
+void goraud_shader(struct vertex *v, void *input);
+void flat_shader(struct vertex *v, void *input);
+
+struct goruad_shader_args {
+	vec3 light_direction;
+};
+
+struct flat_shader_args {
+	vec3 light_direction;
+	vec3 face_normal;
+};
+
+
 void render(struct model model, 
 			transform_3d transform, 
 			transform_3d view, 
@@ -119,21 +132,13 @@ void render(struct model model,
 
 		// Flat shading
 		if (shading_type == SHADING_TYPE_FLAT) {
-			// Calculate a color from the view angle. We interpolate
-			// from color to black.
-			rgb_color shaded_color = interpolate_color(black, color, light_intensity);
-			for (int v = 0; v < 3; v++) {
-				vertices[v].color = shaded_color;
-			}
-			triangle(vertices, NULL, context);
+			struct flat_shader_args args = {.face_normal = face_normal, .light_direction = light_direction};
+			triangle(vertices, &args, &flat_shader, context);
 		}
 
 		else if (shading_type == SHADING_TYPE_GORAUD) {
-			for (int v = 0; v < 3; v++) {
-				float intensity = dot_product_3d(vertices[v].normal, vec3_unit(light_direction));
-				vertices[v].color = interpolate_color(black, vertices[v].color, intensity);
-			}
-			triangle(vertices, NULL, context);
+			struct goruad_shader_args args = {.light_direction = light_direction};
+			triangle(vertices, &args, &goraud_shader, context);
 		}
 
 		// Wireframes
@@ -146,4 +151,28 @@ void render(struct model model,
 			draw_line(p1, p3, context, *wireframe_color);
 		}
     }
+}
+
+/**
+ Takes a value between 0.0 and 1.0 and turns it into a relative value between x and y
+ */
+float compress(float value, float x, float y) {
+	return (y - x) * value + x;
+}
+
+void flat_shader(struct vertex *v, void *input) {
+	struct flat_shader_args *args = (struct flat_shader_args *)input;
+	float light_intensity = dot_product_3d(args->face_normal, vec3_unit(args->light_direction));
+
+	// Normalize the light so we don't get too dark parts. Instead
+	// of using a value between (0.0, 1.0), we go with (0.3, 1.0)
+	light_intensity = compress(light_intensity, 0.3, 1.0);
+	v->color = interpolate_color(black, v->color, light_intensity);
+}
+
+void goraud_shader(struct vertex *v, void *input) {
+	struct goruad_shader_args *args = (struct goruad_shader_args *)input;
+	float light_intensity = dot_product_3d(v->normal, vec3_unit(args->light_direction));
+	light_intensity = compress(light_intensity, 0.3, 1.0);
+	v->color = interpolate_color(black, v->color, light_intensity);
 }
