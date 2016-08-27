@@ -64,22 +64,13 @@ int main() {
 /**
    Applies perspective to simulate vector positions in 3D-space, relative to a view position
 */
-vec2 apply_perspective(vec3 position, vec3 view_point, float amount) {
+vec3 apply_perspective(vec3 position, vec3 view_point, float amount) {
     float distance_x = view_point.x - position.x;
     float distance_y = view_point.y - position.y;
-    vec2 result;
+    vec3 result = position;
     result.x = position.x + position.z * distance_x * amount;
     result.y = position.y + position.z * distance_y * amount;
     return result;
-}
-
-/**
-   Calculates the normal vector for a face
-*/
-vec3 surface_normal(vec3 vertices[3]) {
-    vec3 u = vec3_subtract(vertices[2], vertices[0]);
-    vec3 v = vec3_subtract(vertices[1], vertices[0]);
-    return vec3_unit(cross_product(u, v));
 }
 
 void render(struct model model, 
@@ -97,18 +88,24 @@ void render(struct model model,
 		
 		// Position vertices in view and apply any transformations
 		transform_3d t = transform_3d_concat(transform, view);
-		vec3 vertices[3];
-		vec2 textures[3];
-		float depths[3];
-		for (int i = 0; i < 3; ++i) {
-			vertices[i] = transform_3d_apply(*f.vertices[i], t);
-			depths[i] = vertices[i].z;
-			textures[i] = *f.textures[i];
+		struct vertex vertices[3];
+		for (int v = 0; v < 3; v++) {
+			struct vertex vertex;
+			vertex.coordinate = transform_3d_apply(*f.vertices[v], t);
+			vertex.texture_coordinate = *f.textures[v];
+			vertex.normal = *f.normals[v];
+			vertex.color = color;
+			vertices[v] = vertex;
 		}
 
 		vec3 view_point = {0, 0, 0};
 		view_point = transform_3d_apply(view_point, view);
-		vec3 face_normal = surface_normal(vertices);
+
+		// Get the average normal for the face, or the "face normal", and use it
+		// to perform back-face culling
+		vec3 u = vec3_subtract(vertices[2].coordinate, vertices[0].coordinate);
+		vec3 v = vec3_subtract(vertices[1].coordinate, vertices[0].coordinate);
+		vec3 face_normal = vec3_unit(cross_product(u, v));
 		vec3 light_direction = {0.0, 0.0, 1.0};
 		float light_intensity = dot_product_3d(face_normal, vec3_unit(light_direction));
 		if (light_intensity < 0.0) {
@@ -116,9 +113,8 @@ void render(struct model model,
 		}
 		
 		// Apply perspective (map 3D-coordinates to a 2D-space)
-		vec2 points[3];
-		for (int p = 0; p < 3; ++p) {
-			points[p] = apply_perspective(vertices[p], view_point, perspective);
+		for (int v = 0; v < 3; v++) {
+			vertices[v].coordinate = apply_perspective(vertices[v].coordinate, view_point, perspective); 
 		}
 
 		// Flat shading
@@ -126,27 +122,28 @@ void render(struct model model,
 			// Calculate a color from the view angle. We interpolate
 			// from color to black.
 			rgb_color shaded_color = interpolate_color(black, color, light_intensity);
-			rgb_color colors[] = {shaded_color, shaded_color, shaded_color}; // Goraud_triangle takes an array of colors
-			float intensities[] = {light_intensity, light_intensity, light_intensity};
-			triangle(points, colors, intensities, texture, *f.textures, context, depths);
+			for (int v = 0; v < 3; v++) {
+				vertices[v].color = shaded_color;
+			}
+			triangle(vertices, NULL, context);
 		}
 
 		else if (shading_type == SHADING_TYPE_GORAUD) {
-			rgb_color colors[3];
-			float intensities[3];
-			for (int i = 0; i < 3; ++i) {
-				float intensity = dot_product_3d(*f.normals[i], vec3_unit(light_direction));
-				colors[i] = interpolate_color(black, color, intensity);
-				intensities[i] = intensity;
-			}	
-			triangle(points, colors, intensities, texture, textures, context, depths);
+			for (int v = 0; v < 3; v++) {
+				float intensity = dot_product_3d(vertices[v].normal, vec3_unit(light_direction));
+				vertices[v].color = interpolate_color(black, vertices[v].color, intensity);
+			}
+			triangle(vertices, NULL, context);
 		}
 
 		// Wireframes
 		if (wireframe_color) {
-			draw_line(points[0], points[1], context, *wireframe_color);
-			draw_line(points[1], points[2], context, *wireframe_color);
-			draw_line(points[0], points[2], context, *wireframe_color);
+			vec2 p1 = {.x = vertices[0].coordinate.x, .y = vertices[0].coordinate.y};
+			vec2 p2 = {.x = vertices[1].coordinate.x, .y = vertices[1].coordinate.y};
+			vec2 p3 = {.x = vertices[2].coordinate.x, .y = vertices[2].coordinate.y};
+			draw_line(p1, p2, context, *wireframe_color);
+			draw_line(p2, p3, context, *wireframe_color);
+			draw_line(p1, p3, context, *wireframe_color);
 		}
     }
 }

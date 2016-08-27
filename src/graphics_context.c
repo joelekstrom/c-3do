@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdbool.h>
 
 #define Z_BUFFER_NONE UINT_MAX
 
@@ -70,6 +71,11 @@ vec2 vec2_lerp(vec2 a, vec2 b, float value) {
 	return result;
 }
 
+vec3 vec3_lerp(vec3 a, vec3 b, float value) {
+	vec3 result = {.x = flerp(a.x, b.x, value), .y = flerp(a.y, b.y, value), .z = flerp(a.z, b.z, value)};
+	return result;
+}
+
 // ********** Z-buffering ***************
 float depth_buffer_get(int x, int y, struct graphics_context *context) {
 	return context->depth_buffer[context->width * x + y];  
@@ -81,20 +87,21 @@ void depth_buffer_set(int x, int y, float value, struct graphics_context *contex
 
 // ********** Drawing functions **********
 
-void draw_pixel(int x, int y, struct graphics_context *context, rgb_color color, float *depth) {
+void draw_pixel(vec3 coordinate, rgb_color color, bool z_buffering_enabled, struct graphics_context *context) {
+	int x = (int)roundf(coordinate.x);
+	int y = (int)roundf(coordinate.y);
 	if (context->type == BMP_CONTEXT_TYPE) {
 
 		// Make sure pixel is within context bounds
 		if (x > 0 && x <= context->width && y > 0 && y <= context->height) {
 			
-			// Perform depth check if needed
-			if (depth != NULL) {
+			// Depth check (use the z-value for z-buffering)
+			if (z_buffering_enabled) {
 				float current_depth = depth_buffer_get(x, y, context);
-				if (current_depth != Z_BUFFER_NONE && *depth > current_depth) 
+				if (current_depth != Z_BUFFER_NONE && coordinate.z > current_depth) 
 					return;
-				depth_buffer_set(x, y, *depth, context);
+				depth_buffer_set(x, y, coordinate.z, context);
 			}
-
 			set_pixel(context->_internal, x, y, color.r, color.g, color.b);
 		}
 	} else {
@@ -123,14 +130,14 @@ void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color col
 	// If the line is steep (height > width), we transpose the line, so we can always loop on x-value
 	int steep = fabsf(p2.y - p1.y) > fabsf(p2.x - p1.x);
     if (steep) {
-	swapf(&p1.x, &p1.y);
-	swapf(&p2.x, &p2.y);
+		swapf(&p1.x, &p1.y);
+		swapf(&p2.x, &p2.y);
     }
 
     // Make sure it's drawn left->right
     if (p2.x <= p1.x) {
-	swapf(&p1.x, &p2.x);
-	swapf(&p1.y, &p2.y);
+		swapf(&p1.x, &p2.x);
+		swapf(&p1.y, &p2.y);
     }
 
     for (int x = p1.x; x <= p2.x; x++) {
@@ -141,101 +148,84 @@ void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color col
 		int img_x = steep ? y : x;
 		int img_y = steep ? x : y;
 
-		draw_pixel(img_x, img_y, context, color, NULL);
+		struct vec3 coordinate = {.x = img_x, .y = img_y};
+		draw_pixel(coordinate, color, false, context);
 	}
 }
 
 void clear(struct graphics_context *context, rgb_color color) {
 	for (int x = 0; x < context->width; x++) {
 		for (int y = 0; y < context->height; y++) {
-			draw_pixel(x, y, context, color, NULL);
+			vec3 coordinate = {.x = x, .y = y};
+			draw_pixel(coordinate, color, false, context);
 		}
 	}
 }
 
 // ********** Goraud triangle drawing **********
 
-/**
- A "tuple" which associates a vector with a color and depth. Comparing functions
- below so we can sort tuples easily top > left > right
- */
-struct point {
-	vec2 position;
-	rgb_color color;
-	float intensity;
-	vec2 texture_coordinate;
-	float depth;
-};
-
-struct point interpolate_points(struct point a, struct point b, float value) {
-	struct point result;
-	result.position = vec2_lerp(a.position, b.position, value);
+struct vertex vertex_lerp(struct vertex a, struct vertex b, float value) {
+	struct vertex result;
+	result.coordinate = vec3_lerp(a.coordinate, b.coordinate, value);
 	result.color = interpolate_color(a.color, b.color, value);
-	result.intensity = flerp(a.intensity, b.intensity, value);
+	result.normal = vec3_lerp(a.normal, b.normal, value);
 	result.texture_coordinate = vec2_lerp(a.texture_coordinate, b.texture_coordinate, value);
-	result.depth = flerp(a.depth, b.depth, value);
 	return result;
 }
 
-void draw_point(struct point p, struct graphics_context *context, struct texture *texture) {
-	rgb_color pixel_color;
-	if (texture) {
-		pixel_color = texture_sample(*texture, p.texture_coordinate);
-	} else {
-		pixel_color = p.color;
-	}
-	pixel_color = multiply_color(pixel_color, p.intensity);
-	draw_pixel(roundf(p.position.x), roundf(p.position.y), context, pixel_color, &p.depth);
+void draw_point(struct vertex p, void *shader_input, struct graphics_context *context) {
+	rgb_color pixel_color = p.color;
+	draw_pixel(p.coordinate, pixel_color, true, context);
 }
 
-int compare_points_x(const void *a, const void *b) {
-	struct point *p1 = (struct point *)a;
-	struct point *p2 = (struct point *)b;
-	if (p1->position.x < p2->position.x) return -1;
-	if (p1->position.x > p2->position.x) return 1;
+int compare_vertices_x(const void *a, const void *b) {
+	struct vertex *p1 = (struct vertex *)a;
+	struct vertex *p2 = (struct vertex *)b;
+	if (p1->coordinate.x < p2->coordinate.x) return -1;
+	if (p1->coordinate.x > p2->coordinate.x) return 1;
 	return 0;
 }
 
-int compare_points_y(const void *a, const void *b) {
-	struct point *p1 = (struct point *)a;
-	struct point *p2 = (struct point *)b;
-	if (p1->position.y < p2->position.y) return -1;
-	if (p1->position.y > p2->position.y) return 1;
+int compare_vertices_y(const void *a, const void *b) {
+	struct vertex *p1 = (struct vertex *)a;
+	struct vertex *p2 = (struct vertex *)b;
+	if (p1->coordinate.y < p2->coordinate.y) return -1;
+	if (p1->coordinate.y > p2->coordinate.y) return 1;
 	return 0;
 }
 
-int compare_points(const void *a, const void *b) {
-	int cmp_y = compare_points_y(a, b);
+int compare_vertices(const void *a, const void *b) {
+	int cmp_y = compare_vertices_y(a, b);
 	if (cmp_y != 0)
 		return cmp_y;
-	return compare_points_x(a, b);
+	return compare_vertices_x(a, b);
 }
 
 /**
  Fills a "flat triangle". Points/colors need to be sorted before, and
  left_leg and right_leg must have the same y-value.
  */
-void flat_triangle(struct point anchor,
-				   struct point left_leg,
-				   struct point right_leg,
-				   struct texture *texture,
+void flat_triangle(struct vertex anchor,
+				   struct vertex left_leg,
+				   struct vertex right_leg,
+				   void *shader_input,
 				   struct graphics_context *context)
 {
-	int height = abs((int)roundf(anchor.position.y) - (int)roundf(left_leg.position.y));
-	draw_point(anchor, context, texture);
+	int height = abs((int)roundf(anchor.coordinate.y) - (int)roundf(left_leg.coordinate.y));
+	draw_point(anchor, shader_input, context);
 		
 	for (int y = 1; y <= height; y++) {
 		float t = (float)y / (float)height;
 
 		// Calculate left and right points
-		struct point left_point = interpolate_points(anchor, left_leg, t);
-		struct point right_point = interpolate_points(anchor, right_leg, t);
-		int width = roundf(right_point.position.x) - roundf(left_point.position.x);
+		struct vertex left_point = vertex_lerp(anchor, left_leg, t);
+		struct vertex right_point = vertex_lerp(anchor, right_leg, t);
+		int width = roundf(right_point.coordinate.x) - roundf(left_point.coordinate.x);
 
 		for (int x = 0; x <= width; x++) {
 			float tx = (float)x / (float)width;
-			struct point point_to_draw = interpolate_points(left_point, right_point, tx);
-			draw_point(point_to_draw, context, texture);
+			struct vertex point_to_draw = vertex_lerp(left_point, right_point, tx);
+			draw_point(point_to_draw, shader_input, context);
 		}
 	}
 }
@@ -245,55 +235,37 @@ void flat_triangle(struct point anchor,
  This function sorts the points/colors and splits the triangle if needed,
  and then delegates drawing to flat_triangle.
  */
-void triangle_p(struct point points[3], struct texture *texture, struct graphics_context *context) {
+void triangle(struct vertex vertices[3], void *shader_input, struct graphics_context *context) {
 
 	// Sort points it top->left->right
-	qsort(points, 3, sizeof(struct point), &compare_points);
+	qsort(vertices, 3, sizeof(struct vertex), &compare_vertices);
 
-	// If the y-value of the first and second points are the same, we have a flat-top triangle
-	if (compare_points_y(&points[0], &points[1]) == 0) {
-		flat_triangle(points[2], points[0], points[1], texture, context);
+	// If the y-value of the first and second vertices are the same, we have a flat-top triangle
+	if (compare_vertices_y(&vertices[0], &vertices[1]) == 0) {
+		flat_triangle(vertices[2], vertices[0], vertices[1], shader_input, context);
 	} 
 
 	// ... And if the second and third have the same y-value, we have a flat-bottom triangle
-	else if (compare_points_y(&points[1], &points[2]) == 0) {
-		flat_triangle(points[0], points[1], points[2], texture, context);
+	else if (compare_vertices_y(&vertices[1], &vertices[2]) == 0) {
+		flat_triangle(vertices[0], vertices[1], vertices[2], shader_input, context);
 	} 
 
 	// If the triangle has neither a flat top, or flat bottom, it makes it very complicated to draw.
 	// Simplify it by splitting it into two triangles (one flat-top, and one flat-bottom)
 	else {
-		struct point split_point = points[1]; // We split the triangle on the middle-y point
-		struct point other_points[] = { points[0], points[2] };
+		struct vertex split_point = vertices[1]; // We split the triangle on the middle-y point
+		struct vertex other_vertices[] = {vertices[0], vertices[2]};
 		
-		// Interpolate between the 'other' points to create a new point
-		float t = (split_point.position.y - other_points[0].position.y) / (other_points[1].position.y - other_points[0].position.y);
-		struct point new_point = interpolate_points(other_points[0], other_points[1], t);
+		// Interpolate between the 'other' vertices to create a new point
+		float t = (split_point.coordinate.y - other_vertices[0].coordinate.y) / (other_vertices[1].coordinate.y - other_vertices[0].coordinate.y);
+		struct vertex new_point = vertex_lerp(other_vertices[0], other_vertices[1], t);
 		
 		// Call this function twice for two new, splitted triangles
 		for (int i = 0; i < 2; i++) {
-			struct point points[] = {new_point, split_point, other_points[i]};
-			triangle_p(points, texture, context);
+			struct vertex vertices[] = {new_point, split_point, other_vertices[i]};
+			triangle(vertices, shader_input, context);
 		}
 	}
-}
-
-/**
- The external interface for triangle drawings. Given arrays of vectors, colors, texture coords
- etc, it converts this data into struct point objects and delegates drawing to triangle_p.
- */
-void triangle(vec2 vectors[3], rgb_color colors[3], float light_intensities[3], struct texture *texture, vec2 texture_coordinates[3], struct graphics_context *context, float *point_depths) {
-	struct point points[3];
-	for (int i = 0; i < 3; ++i) {
-		struct point data;
-		data.position = vectors[i];
-		data.color = colors[i];
-		data.intensity = light_intensities[i];
-		data.texture_coordinate = texture_coordinates[i];
-		data.depth = point_depths[i];
-		points[i] = data;
-	}
-	triangle_p(points, texture, context);
 }
 
 /******* Textures *********/
