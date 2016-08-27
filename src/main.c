@@ -75,14 +75,13 @@ vec3 apply_perspective(vec3 position, vec3 view_point, float amount) {
 
 void goraud_shader(struct vertex *v, void *input);
 void flat_shader(struct vertex *v, void *input);
+rgb_color fragment_shader(struct vertex * const interpolated_v, void *input);
 
-struct goruad_shader_args {
-	vec3 light_direction;
-};
-
-struct flat_shader_args {
+struct shader_args {
 	vec3 light_direction;
 	vec3 face_normal;
+	struct texture *texture;
+	struct texture *normal_map;
 };
 
 
@@ -130,15 +129,14 @@ void render(struct model model,
 			vertices[v].coordinate = apply_perspective(vertices[v].coordinate, view_point, perspective); 
 		}
 
-		// Flat shading
+		struct shader_args args = {.face_normal = face_normal, .light_direction = light_direction, .texture = texture};
+		
 		if (shading_type == SHADING_TYPE_FLAT) {
-			struct flat_shader_args args = {.face_normal = face_normal, .light_direction = light_direction};
-			triangle(vertices, &args, &flat_shader, context);
+			triangle(vertices, &args, &flat_shader, &fragment_shader, context);
 		}
 
 		else if (shading_type == SHADING_TYPE_GORAUD) {
-			struct goruad_shader_args args = {.light_direction = light_direction};
-			triangle(vertices, &args, &goraud_shader, context);
+			triangle(vertices, &args, &goraud_shader, &fragment_shader, context);
 		}
 
 		// Wireframes
@@ -161,7 +159,7 @@ float compress(float value, float x, float y) {
 }
 
 void flat_shader(struct vertex *v, void *input) {
-	struct flat_shader_args *args = (struct flat_shader_args *)input;
+	struct shader_args *args = (struct shader_args *)input;
 	float light_intensity = dot_product_3d(args->face_normal, vec3_unit(args->light_direction));
 
 	// Normalize the light so we don't get too dark parts. Instead
@@ -171,8 +169,22 @@ void flat_shader(struct vertex *v, void *input) {
 }
 
 void goraud_shader(struct vertex *v, void *input) {
-	struct goruad_shader_args *args = (struct goruad_shader_args *)input;
+	struct shader_args *args = (struct shader_args *)input;
 	float light_intensity = dot_product_3d(v->normal, vec3_unit(args->light_direction));
 	light_intensity = compress(light_intensity, 0.3, 1.0);
 	v->color = interpolate_color(black, v->color, light_intensity);
+}
+
+/**
+ The phone shader works the same way as the goraud vertex shader, except
+ it calculates a normal for each fragment, which is slower but more accurate
+ */
+rgb_color fragment_shader(struct vertex * const interpolated_v, void *input) {
+	struct shader_args *args = (struct shader_args *)input;
+	rgb_color texture_color = texture_sample(*args->texture, interpolated_v->texture_coordinate);
+
+	// Since we currently render from white -> black with light intensity,
+	// we can use the red channel as an intensity value for the texture
+	float intensity = (float)interpolated_v->color.r / (float)255;
+	return interpolate_color(black, texture_color, intensity);
 }

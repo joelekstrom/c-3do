@@ -59,8 +59,10 @@ rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value);
 void triangle(struct vertex vertices[3],
 			  void *shader_input,
 			  void (*vertex_shader)(struct vertex *v, void *input),
+			  rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input),
 			  struct graphics_context *context);
 
 struct texture load_texture(char *file_name);
+rgb_color texture_sample(struct texture t, vec2 coordinate);
 
 #endif

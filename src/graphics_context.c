@@ -173,8 +173,9 @@ struct vertex vertex_lerp(struct vertex a, struct vertex b, float value) {
 	return result;
 }
 
-void draw_point(struct vertex p, void *shader_input, void (*vertex_shader)(struct vertex *v, void *input), struct graphics_context *context) {
-	draw_pixel(p.coordinate, p.color, true, context);
+void draw_point(struct vertex p, void *shader_input, rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input), struct graphics_context *context) {
+	rgb_color color = fragment_shader ? fragment_shader(&p, shader_input) : p.color;
+	draw_pixel(p.coordinate, color, true, context);
 }
 
 int compare_vertices_x(const void *a, const void *b) {
@@ -208,11 +209,11 @@ void flat_triangle(struct vertex anchor,
 				   struct vertex left_leg,
 				   struct vertex right_leg,
 				   void *shader_input,
-				   void (*vertex_shader)(struct vertex *v, void *input),
+				   rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input),
 				   struct graphics_context *context)
 {
 	int height = abs((int)roundf(anchor.coordinate.y) - (int)roundf(left_leg.coordinate.y));
-	draw_point(anchor, shader_input, vertex_shader, context);
+	draw_point(anchor, shader_input, fragment_shader, context);
 		
 	for (int y = 1; y <= height; y++) {
 		float t = (float)y / (float)height;
@@ -225,7 +226,7 @@ void flat_triangle(struct vertex anchor,
 		for (int x = 0; x <= width; x++) {
 			float tx = (float)x / (float)width;
 			struct vertex point_to_draw = vertex_lerp(left_point, right_point, tx);
-			draw_point(point_to_draw, shader_input, vertex_shader, context);
+			draw_point(point_to_draw, shader_input, fragment_shader, context);
 		}
 	}
 }
@@ -238,6 +239,7 @@ void flat_triangle(struct vertex anchor,
 void triangle(struct vertex vertices[3],
 			  void *shader_input,
 			  void (*vertex_shader)(struct vertex *v, void *input),
+			  rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input),
 			  struct graphics_context *context)
 {
 	// Start by applying the vertex shader so we get correct coordinates/colors
@@ -252,12 +254,12 @@ void triangle(struct vertex vertices[3],
 
 	// If the y-value of the first and second vertices are the same, we have a flat-top triangle
 	if (compare_vertices_y(&vertices[0], &vertices[1]) == 0) {
-		flat_triangle(vertices[2], vertices[0], vertices[1], shader_input, vertex_shader, context);
+		flat_triangle(vertices[2], vertices[0], vertices[1], shader_input, fragment_shader, context);
 	} 
 
 	// ... And if the second and third have the same y-value, we have a flat-bottom triangle
 	else if (compare_vertices_y(&vertices[1], &vertices[2]) == 0) {
-		flat_triangle(vertices[0], vertices[1], vertices[2], shader_input, vertex_shader, context);
+		flat_triangle(vertices[0], vertices[1], vertices[2], shader_input, fragment_shader, context);
 	} 
 
 	// If the triangle has neither a flat top, or flat bottom, it makes it very complicated to draw.
@@ -273,7 +275,7 @@ void triangle(struct vertex vertices[3],
 		// Call this function twice for two new, splitted triangles
 		for (int i = 0; i < 2; i++) {
 			struct vertex vertices[] = {new_point, split_point, other_vertices[i]};
-			triangle(vertices, shader_input, vertex_shader, context);
+			triangle(vertices, shader_input, vertex_shader, fragment_shader, context);
 		}
 	}
 }
