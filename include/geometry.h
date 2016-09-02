@@ -27,6 +27,7 @@ vec3 cross_product(vec3 v1, vec3 v2);
 vec3 vec3_unit(vec3 v);
 vec3 vec3_subtract(vec3 v1, vec3 v2);
 vec3 vec3_add(vec3 v1, vec3 v2);
+vec3 vec3_scale(vec3 v, float s);
 
 // Transforms
 extern const transform_3d transform_3d_identity;

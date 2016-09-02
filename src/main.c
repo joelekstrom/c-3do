@@ -20,9 +20,10 @@ typedef enum {
 void render(struct model model, 
 			transform_3d transform, 
 			transform_3d view, 
-			float perspective, 
-			struct graphics_context *context, 
+			float perspective,
+			vec3 light_direction,
 			rgb_color color,
+			struct graphics_context *context, 
 			SHADING_TYPE shading_type,
 			struct texture *texture,
 			rgb_color *wireframe_color);
@@ -47,13 +48,25 @@ int main() {
     transform_3d view = transform_3d_make_translation(context->width / 2.0, context->height / 2.0, 100.0);
     float perspective = 0.0005;
 
+	// Add a light source pointing straight forward from the camera
+	vec3 light_direction = {.x = 0.0, .y = 0.0, .z = 1.0};
+
     transform_3d flip_yz = transform_3d_identity;
     flip_yz.sy = -1.0;
     flip_yz.sz = -1.0;
     transform_3d scale = transform_3d_make_scale(400.0, 400.0, 400.0);
     transform_3d translate = transform_3d_make_translation(0.0, 300.0, 1.0);
     transform_3d scale_and_translate = transform_3d_concat(scale, translate);
-    render(model, transform_3d_concat(flip_yz, scale_and_translate), view, perspective, context, white, SHADING_TYPE_GORAUD, &texture, NULL);
+    render(model,
+		   transform_3d_concat(flip_yz, scale_and_translate),
+		   view,
+		   perspective,
+		   light_direction,
+		   white,
+		   context,
+		   SHADING_TYPE_GORAUD,
+		   &texture,
+		   NULL);
 	
     unload_model(model);
     bmp_context_save(context, "output.bmp");
@@ -61,84 +74,72 @@ int main() {
     return 0;
 }
 
-/**
-   Applies perspective to simulate vector positions in 3D-space, relative to a view position
-*/
-vec3 apply_perspective(vec3 position, vec3 view_point, float amount) {
-    float distance_x = view_point.x - position.x;
-    float distance_y = view_point.y - position.y;
-    vec3 result = position;
-    result.x = position.x + position.z * distance_x * amount;
-    result.y = position.y + position.z * distance_y * amount;
-    return result;
-}
-
-void goraud_shader(struct vertex *v, void *input);
-void flat_shader(struct vertex *v, void *input);
+vec3 apply_perspective(vec3 position, transform_3d view, float amount);
+void goraud_shader(struct vertex *v, transform_3d model, transform_3d view, float perspective, vec3 light_direction);
+void flat_shader(struct vertex *v, transform_3d model, transform_3d view, float perspective, vec3 light_direction, vec3 face_normal);
 rgb_color fragment_shader(struct vertex * const interpolated_v, void *input);
 
-struct shader_args {
-	vec3 light_direction;
-	vec3 face_normal;
+struct fragment_shader_input {
 	struct texture *texture;
 	struct texture *normal_map;
 };
 
-
 void render(struct model model, 
 			transform_3d transform, 
 			transform_3d view, 
-			float perspective, 
-			struct graphics_context *context, 
+			float perspective,
+			vec3 light_direction,
 			rgb_color color,
+			struct graphics_context *context, 
 			SHADING_TYPE shading_type,
 			struct texture *texture,
 			rgb_color *wireframe_color)
 {
     for (int i = 0; i < model.num_faces; i++) {
 		struct face f = model.faces[i];
+
+		// Calculate the face normal which is used for back-face culling and flat shading
+		vec3 v = vec3_subtract(*f.vertices[1], *f.vertices[0]);
+		vec3 u = vec3_subtract(*f.vertices[2], *f.vertices[0]);
+		vec3 face_normal = vec3_unit(cross_product(u, v));
 		
-		// Position vertices in view and apply any transformations
-		transform_3d t = transform_3d_concat(transform, view);
+		// Create vertex objects that are used by shaders/drawing code
 		struct vertex vertices[3];
 		for (int v = 0; v < 3; v++) {
 			struct vertex vertex;
-			vertex.coordinate = transform_3d_apply(*f.vertices[v], t);
+			vertex.coordinate = *f.vertices[v];
 			vertex.texture_coordinate = *f.textures[v];
 			vertex.normal = *f.normals[v];
 			vertex.color = color;
+		
+			// Apply the vertex shader
+			switch (shading_type) {
+			case SHADING_TYPE_GORAUD:
+				goraud_shader(&vertex, transform, view, perspective, light_direction);
+				break;
+			case SHADING_TYPE_FLAT:
+				flat_shader(&vertex, transform, view, perspective, light_direction, face_normal);
+				break;
+			}
+			
 			vertices[v] = vertex;
 		}
 
-		vec3 view_point = {0, 0, 0};
-		view_point = transform_3d_apply(view_point, view);
-
-		// Get the average normal for the face, or the "face normal", and use it
-		// to perform back-face culling
-		vec3 u = vec3_subtract(vertices[2].coordinate, vertices[0].coordinate);
-		vec3 v = vec3_subtract(vertices[1].coordinate, vertices[0].coordinate);
-		vec3 face_normal = vec3_unit(cross_product(u, v));
-		vec3 light_direction = {0.0, 0.0, 1.0};
-		float light_intensity = dot_product_3d(face_normal, vec3_unit(light_direction));
-		if (light_intensity < 0.0) {
+		// Get the new face normal and drop triangles that are "back facing",
+		// aka back-face culling
+		v = vec3_subtract(vertices[1].coordinate, vertices[0].coordinate);
+		u = vec3_subtract(vertices[2].coordinate, vertices[0].coordinate);
+		vec3 new_face_normal = vec3_scale(vec3_unit(cross_product(u, v)), 1.0);
+		float angle = dot_product_3d(new_face_normal, vec3_unit(light_direction));
+		if (angle < 0.0) {
 			continue; // Back-face culling
-		}
+        }
+
+		struct fragment_shader_input input;
+		input.texture = texture;
 		
-		// Apply perspective (map 3D-coordinates to a 2D-space)
-		for (int v = 0; v < 3; v++) {
-			vertices[v].coordinate = apply_perspective(vertices[v].coordinate, view_point, perspective); 
-		}
-
-		struct shader_args args = {.face_normal = face_normal, .light_direction = light_direction, .texture = texture};
+		triangle(vertices, &input, &fragment_shader, context);
 		
-		if (shading_type == SHADING_TYPE_FLAT) {
-			triangle(vertices, &args, &flat_shader, &fragment_shader, context);
-		}
-
-		else if (shading_type == SHADING_TYPE_GORAUD) {
-			triangle(vertices, &args, &goraud_shader, &fragment_shader, context);
-		}
-
 		// Wireframes
 		if (wireframe_color) {
 			vec2 p1 = {.x = vertices[0].coordinate.x, .y = vertices[0].coordinate.y};
@@ -152,35 +153,62 @@ void render(struct model model,
 }
 
 /**
- Takes a value between 0.0 and 1.0 and turns it into a relative value between x and y
+ Applies model and view transforms to a vectors coordinate and normal vector
  */
-float compress(float value, float x, float y) {
-	return (y - x) * value + x;
-}
+void apply_transforms(struct vertex *v, transform_3d model, transform_3d view) {
+	transform_3d transform = transform_3d_concat(model, view);
+	v->coordinate = transform_3d_apply(v->coordinate, transform);
 
-void flat_shader(struct vertex *v, void *input) {
-	struct shader_args *args = (struct shader_args *)input;
-	float light_intensity = dot_product_3d(args->face_normal, vec3_unit(args->light_direction));
-
-	// Normalize the light so we don't get too dark parts. Instead
-	// of using a value between (0.0, 1.0), we go with (0.3, 1.0)
-	light_intensity = compress(light_intensity, 0.3, 1.0);
-	v->color = interpolate_color(black, v->color, light_intensity);
-}
-
-void goraud_shader(struct vertex *v, void *input) {
-	struct shader_args *args = (struct shader_args *)input;
-	float light_intensity = dot_product_3d(v->normal, vec3_unit(args->light_direction));
-	light_intensity = compress(light_intensity, 0.3, 1.0);
-	v->color = interpolate_color(black, v->color, light_intensity);
+	// Remove translations from the matrix so we only apply scale + rotation to
+	// the normals. This is not correct for skewed objects. The correct solution
+	// for calculating the normal would be to use an inverse transpose matrix
+	transform.tx = 1.0;
+	transform.ty = 1.0;
+	transform.tz = 1.0;	
+	v->normal = vec3_scale(vec3_unit(transform_3d_apply(v->normal, transform)), -1.0);
 }
 
 /**
- The phone shader works the same way as the goraud vertex shader, except
- it calculates a normal for each fragment, which is slower but more accurate
- */
+ Applies perspective to simulate vector positions in 3D-space, relative to a view position
+*/
+vec3 apply_perspective(vec3 position, transform_3d view, float amount) {
+	// Convert view matrix to a vector to simplify calculations
+	vec3 view_point = {0, 0, 0};
+	view_point = transform_3d_apply(view_point, view);
+	
+    float distance_x = view_point.x - position.x;
+    float distance_y = view_point.y - position.y;
+    vec3 result = position;
+    result.x = position.x + position.z * distance_x * amount;
+    result.y = position.y + position.z * distance_y * amount;
+    return result;
+}
+
+void goraud_shader(struct vertex *v, transform_3d model, transform_3d view, float perspective, vec3 light_direction) {
+	// Apply all transforms. Rotation, scaling, translation etc
+	apply_transforms(v, model, view);
+
+	// Apply perspective (move x and y further to/away from the middle
+	// depending on the Z value, to give the illusion of depth)
+	v->coordinate = apply_perspective(v->coordinate, view, perspective);
+		
+	// Calculate light intensity by checking the angle of the vertex normal
+	// to the angle of the light direction. If vertex is directly facing the
+	// light direction, it will be fully illuminated, and if it's >= 90 degrees
+	// it will be totally black
+	float light_intensity = dot_product_3d(v->normal, vec3_unit(light_direction));
+	v->color = interpolate_color(black, v->color, light_intensity);
+}
+
+void flat_shader(struct vertex *v, transform_3d model, transform_3d view, float perspective, vec3 light_direction, vec3 face_normal) {
+	apply_transforms(v, model, view);
+	v->coordinate = apply_perspective(v->coordinate, view, perspective);
+	float light_intensity = dot_product_3d(face_normal, vec3_unit(light_direction));
+	v->color = interpolate_color(black, v->color, light_intensity);
+}
+
 rgb_color fragment_shader(struct vertex * const interpolated_v, void *input) {
-	struct shader_args *args = (struct shader_args *)input;
+	struct fragment_shader_input *args = (struct fragment_shader_input *)input;
 	rgb_color texture_color = texture_sample(*args->texture, interpolated_v->texture_coordinate);
 
 	// Since we currently render from white -> black with light intensity,

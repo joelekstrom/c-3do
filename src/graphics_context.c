@@ -238,17 +238,9 @@ void flat_triangle(struct vertex anchor,
  */
 void triangle(struct vertex vertices[3],
 			  void *shader_input,
-			  void (*vertex_shader)(struct vertex *v, void *input),
 			  rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input),
 			  struct graphics_context *context)
-{
-	// Start by applying the vertex shader so we get correct coordinates/colors
-	if (vertex_shader) {
-		for (int i = 0; i < 3; i++) {
-			vertex_shader(&vertices[i], shader_input);
-		}
-	}
-	
+{	
 	// Sort points it top->left->right
 	qsort(vertices, 3, sizeof(struct vertex), &compare_vertices);
 
@@ -275,7 +267,7 @@ void triangle(struct vertex vertices[3],
 		// Call this function twice for two new, splitted triangles
 		for (int i = 0; i < 2; i++) {
 			struct vertex vertices[] = {new_point, split_point, other_vertices[i]};
-			triangle(vertices, shader_input, vertex_shader, fragment_shader, context);
+			triangle(vertices, shader_input, fragment_shader, context);
 		}
 	}
 }

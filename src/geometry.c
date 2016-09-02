@@ -11,9 +11,9 @@ float dot_product_3d(vec3 v1, vec3 v2) {
 }
 
 vec3 cross_product(vec3 v1, vec3 v2) {
-	vec3 result = { .x = v1.y * v2.z - v1.z * v2.y,
-                    .y = v1.z * v2.x - v1.x * v2.z,
-                    .z = v1.x * v2.y - v1.y * v2.x };
+	vec3 result = {.x = v1.y * v2.z - v1.z * v2.y,
+                   .y = v1.z * v2.x - v1.x * v2.z,
+                   .z = v1.x * v2.y - v1.y * v2.x};
 	return result;
 }
 
@@ -24,16 +24,23 @@ vec3 vec3_unit(vec3 v) {
 }
 
 vec3 vec3_subtract(vec3 v1, vec3 v2) {
-	vec3 result = { .x = v1.x - v2.x,
-                    .y = v1.y - v2.y,
-                    .z = v1.z - v2.z };
+	vec3 result = {.x = v1.x - v2.x,
+                   .y = v1.y - v2.y,
+                   .z = v1.z - v2.z};
 	return result;
 }
 
 vec3 vec3_add(vec3 v1, vec3 v2) {
-	vec3 result = { .x = v1.x + v2.x,
-                    .y = v1.y + v2.y,
-                    .z = v1.z + v2.z };
+	vec3 result = {.x = v1.x + v2.x,
+                   .y = v1.y + v2.y,
+                   .z = v1.z + v2.z};
+	return result;
+}
+
+vec3 vec3_scale(vec3 v, float s) {
+	vec3 result = {.x = v.x * s,
+				   .y = v.y * s,
+				   .z = v.z * s};
 	return result;
 }
 

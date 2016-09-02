@@ -12,7 +12,8 @@ typedef struct {
 } rgb_color;
 
 typedef enum {
-	BMP_CONTEXT_TYPE
+	BMP_CONTEXT_TYPE,
+	SDL_CONTEXT_TYPE
 } context_type;
 
 struct graphics_context {
@@ -58,7 +59,6 @@ rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value);
  */
 void triangle(struct vertex vertices[3],
 			  void *shader_input,
-			  void (*vertex_shader)(struct vertex *v, void *input),
 			  rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input),
 			  struct graphics_context *context);
 
