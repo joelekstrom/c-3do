@@ -87,24 +87,25 @@ void depth_buffer_set(int x, int y, float value, struct graphics_context *contex
 
 // ********** Drawing functions **********
 
-void draw_pixel(vec3 coordinate, rgb_color color, bool z_buffering_enabled, struct graphics_context *context) {
+void draw_fragment(vec3 coordinate, rgb_color color, struct graphics_context *context) {
 	int x = (int)roundf(coordinate.x);
 	int y = (int)roundf(coordinate.y);
 	if (context->type == BMP_CONTEXT_TYPE) {
 
-		// Make sure pixel is within context bounds
-		if (x > 0 && x <= context->width && y > 0 && y <= context->height) {
-			
-			// Depth check (use the z-value for z-buffering)
-			if (z_buffering_enabled) {
-				float current_depth = depth_buffer_get(x, y, context);
-				if (current_depth != Z_BUFFER_NONE && coordinate.z > current_depth) 
-					return;
-				depth_buffer_set(x, y, coordinate.z, context);
-			}
-			set_pixel(context->_internal, x, y, color.r, color.g, color.b);
+		// Discard fragments outside buffer bounds
+		if (x < 0 || x >= context->width || y < 0 || y >= context->height) {
+			return;
 		}
-	} else {
+			
+		// Depth check (use the z-value for z-buffering)
+		if (context->depth_buffer) {
+			float current_depth = depth_buffer_get(x, y, context);
+			if (current_depth != Z_BUFFER_NONE && coordinate.z > current_depth) 
+				return;
+			depth_buffer_set(x, y, coordinate.z, context);
+		}
+		set_pixel(context->_internal, x, y, color.r, color.g, color.b);
+	}  else {
 		puts("Unsupported graphics context");
 		exit(EXIT_FAILURE);	
 	}
@@ -120,36 +121,16 @@ void swapf(float *a, float *b) {
  Draws a 2D line between two points, ignoring Z-value
  */
 void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color color) {
+	float line_width = fabsf(p2.x - p1.x);
+	float line_height = fabsf(p2.y - p1.y);
+	float length = (line_width > line_height) ? line_width : line_height;
+	
+    for (int i = 0; i < roundf(length); i++) {
+		float t = (float)i / length;
+		vec2 p = vec2_lerp(p1, p2, t);
 
-	// We can only draw integrals, so round the numbers
-	p1.x = (int)(p1.x + 0.5);
-	p1.y = (int)(p1.y + 0.5);
-	p2.x = (int)(p2.x + 0.5);
-	p2.y = (int)(p2.y + 0.5);
-
-	// If the line is steep (height > width), we transpose the line, so we can always loop on x-value
-	int steep = fabsf(p2.y - p1.y) > fabsf(p2.x - p1.x);
-    if (steep) {
-		swapf(&p1.x, &p1.y);
-		swapf(&p2.x, &p2.y);
-    }
-
-    // Make sure it's drawn left->right
-    if (p2.x <= p1.x) {
-		swapf(&p1.x, &p2.x);
-		swapf(&p1.y, &p2.y);
-    }
-
-    for (int x = p1.x; x <= p2.x; x++) {
-		float t = (x - p1.x) / (float)(p2.x - p1.x);
-		int y = p1.y * (1.0 - t) + (p2.y * t) + 0.5;
-
-		// De-transpose if needed
-		int img_x = steep ? y : x;
-		int img_y = steep ? x : y;
-
-		struct vec3 coordinate = {.x = img_x, .y = img_y};
-		draw_pixel(coordinate, color, false, context);
+		struct vec3 coordinate = {.x = p.x, .y = p.y, .z = -9000.0};
+		draw_fragment(coordinate, color, context);
 	}
 }
 
@@ -157,7 +138,7 @@ void clear(struct graphics_context *context, rgb_color color) {
 	for (int x = 0; x < context->width; x++) {
 		for (int y = 0; y < context->height; y++) {
 			vec3 coordinate = {.x = x, .y = y};
-			draw_pixel(coordinate, color, false, context);
+			draw_fragment(coordinate, color, context);
 		}
 	}
 }
@@ -175,7 +156,7 @@ struct vertex vertex_lerp(struct vertex a, struct vertex b, float value) {
 
 void draw_point(struct vertex p, void *shader_input, rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input), struct graphics_context *context) {
 	rgb_color color = fragment_shader ? fragment_shader(&p, shader_input) : p.color;
-	draw_pixel(p.coordinate, color, true, context);
+	draw_fragment(p.coordinate, color, context);
 }
 
 int compare_vertices_x(const void *a, const void *b) {
