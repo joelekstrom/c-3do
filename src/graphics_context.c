@@ -59,23 +59,6 @@ rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value) {
 	return result;
 }
 
-/**
- Linearly interpolate, short "lerp", between two float values
- */
-float flerp(float a, float b, float value) {
-	return a + (b - a) * value;
-}
-
-vec2 vec2_lerp(vec2 a, vec2 b, float value) {
-	vec2 result = {.x = flerp(a.x, b.x, value), .y = flerp(a.y, b.y, value)};
-	return result;
-}
-
-vec3 vec3_lerp(vec3 a, vec3 b, float value) {
-	vec3 result = {.x = flerp(a.x, b.x, value), .y = flerp(a.y, b.y, value), .z = flerp(a.z, b.z, value)};
-	return result;
-}
-
 // ********** Z-buffering ***************
 float depth_buffer_get(int x, int y, struct graphics_context *context) {
 	return context->depth_buffer[context->width * x + y];  

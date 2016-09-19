@@ -44,6 +44,23 @@ vec3 vec3_scale(vec3 v, float s) {
 	return result;
 }
 
+/**
+ Linearly interpolate, short "lerp", between two float values
+ */
+float flerp(float a, float b, float value) {
+	return a + (b - a) * value;
+}
+
+vec2 vec2_lerp(vec2 a, vec2 b, float value) {
+	vec2 result = {.x = flerp(a.x, b.x, value), .y = flerp(a.y, b.y, value)};
+	return result;
+}
+
+vec3 vec3_lerp(vec3 a, vec3 b, float value) {
+	vec3 result = {.x = flerp(a.x, b.x, value), .y = flerp(a.y, b.y, value), .z = flerp(a.z, b.z, value)};
+	return result;
+}
+
 const transform_3d transform_3d_identity = {
     .sx = 1.0, .sy = 1.0, .sz = 1.0, .dm = 1.0
 };

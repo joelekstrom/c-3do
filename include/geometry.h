@@ -29,6 +29,11 @@ vec3 vec3_subtract(vec3 v1, vec3 v2);
 vec3 vec3_add(vec3 v1, vec3 v2);
 vec3 vec3_scale(vec3 v, float s);
 
+// Linear interpolation
+float flerp(float a, float b, float value);
+vec2 vec2_lerp(vec2 a, vec2 b, float value);
+vec3 vec3_lerp(vec3 a, vec3 b, float value);
+
 // Transforms
 extern const transform_3d transform_3d_identity;
 transform_3d transform_3d_make_translation(float tx, float ty, float sz);
