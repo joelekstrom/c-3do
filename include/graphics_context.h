@@ -2,14 +2,8 @@
 #define GRAPHICS_CONTEXT_H
 
 #include "geometry.h"
-#include <stdint.h>
+#include "color.h"
 #include <stdlib.h>
-
-typedef struct {
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
-} rgb_color;
 
 typedef enum {
 	BMP_CONTEXT_TYPE,
@@ -21,12 +15,6 @@ struct graphics_context {
 	int width;
 	int height;
 	float *depth_buffer;
-	void *_internal;
-};
-
-struct texture {
-	int width;
-	int height;
 	void *_internal;
 };
 
@@ -61,8 +49,5 @@ void triangle(struct vertex vertices[3],
 			  void *shader_input,
 			  rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input),
 			  struct graphics_context *context);
-
-struct texture load_texture(char *file_name);
-rgb_color texture_sample(struct texture t, vec2 coordinate);
 
 #endif

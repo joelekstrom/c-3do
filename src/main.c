@@ -1,9 +1,12 @@
 #include "graphics_context.h"
 #include "geometry.h"
+#include "textures.h"
+#include "color.h"
+#include "obj.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "obj.h"
 
 rgb_color red = {255, 0, 0};
 rgb_color green = {0, 255, 0};

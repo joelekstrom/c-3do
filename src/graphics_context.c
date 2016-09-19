@@ -45,20 +45,6 @@ void bmp_context_save(struct graphics_context *context, char name[]) {
 	}
 }
 
-rgb_color multiply_color(rgb_color color, float value) {
-	rgb_color result = { .r = color.r * value,
-                         .g = color.g * value,
-                         .b = color.b * value };
-	return result;
-}
-
-rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value) {
-	rgb_color result = { .r = c1.r + (c2.r - c1.r) * value,
-                         .g = c1.g + (c2.g - c1.g) * value,
-                         .b = c1.b + (c2.b - c1.b) * value };
-	return result;
-}
-
 // ********** Z-buffering ***************
 float depth_buffer_get(int x, int y, struct graphics_context *context) {
 	return context->depth_buffer[context->width * x + y];  
@@ -236,19 +222,4 @@ void triangle(struct vertex vertices[3],
 	}
 }
 
-/******* Textures *********/
 
-struct texture load_texture(char *file_name) {
-	struct texture texture;
-	bmp_t *bitmap = load_bmp(file_name);
-	texture._internal = bitmap;
-	texture.width = bitmap->info.w;
-	texture.height = bitmap->info.h;
-	return texture;
-}
-
-rgb_color texture_sample(struct texture t, vec2 coordinate) {
-	rgb_color color;
-	get_pixel(t._internal, (int)(coordinate.x * t.width), (int)(coordinate.y * t.height), &color.r, &color.g, &color.b);
-	return color;
-}
