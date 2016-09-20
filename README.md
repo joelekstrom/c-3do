@@ -8,4 +8,4 @@ c-3do loads models in the [Wavefront .obj-format](http://en.wikipedia.org/wiki/W
 
 ## Progress images
 ![Goraud triangle](http://i.imgur.com/bgANjBA.png)
-![Goraud shading + Z-buffering](http://i.imgur.com/fUvzLP6.png)
+![Goraud shading + Z-buffering nad textures](http://i.imgur.com/jyRHx58.jpg)
