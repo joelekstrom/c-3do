@@ -7,7 +7,7 @@
 
 typedef enum {
 	BMP_CONTEXT_TYPE,
-	SDL_CONTEXT_TYPE
+	WINDOW_CONTEXT_TYPE
 } context_type;
 
 struct graphics_context {
@@ -15,6 +15,7 @@ struct graphics_context {
 	int width;
 	int height;
 	float *depth_buffer;
+	void (*render_callback)(struct graphics_context *context);
 	void *_internal;
 };
 
@@ -25,12 +26,12 @@ struct vertex {
 	vec2 texture_coordinate;
 };
 
-struct graphics_context *create_context(context_type type, int width, int height);
+struct graphics_context *create_context(context_type type, int width, int height, void (*render_callback)(struct graphics_context *context));
+void context_activate(struct graphics_context *context);
 void destroy_context(struct graphics_context *context);
 
 void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color color);
 void clear(struct graphics_context *context, rgb_color color);
-void bmp_context_save(struct graphics_context *context, char name[]);
 
 rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value);
 

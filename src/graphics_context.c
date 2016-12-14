@@ -1,5 +1,6 @@
 #include "graphics_context.h"
 #include "nano_bmp.h"
+#include "textures.h"
 #include <string.h>
 #include <limits.h>
 #include <stdio.h>
@@ -10,20 +11,21 @@
 
 rgb_color texture_sample(struct texture t, vec2 coordinate);
 
-struct graphics_context *create_context(context_type type, int width, int height) {
+struct graphics_context *create_context(context_type type, int width, int height, void (*render_callback)(struct graphics_context *context)) {
 	struct graphics_context *context = (struct graphics_context *)malloc(sizeof(struct graphics_context));
 	context->depth_buffer = (float *)malloc(sizeof(float) * width * height);
 	memset(context->depth_buffer, Z_BUFFER_NONE, sizeof(float) * width * height);
 	context->type = type;
 	context->width = width;
 	context->height = height;
+	context->render_callback = render_callback;
 
 	if (type == BMP_CONTEXT_TYPE) {
 		bmp_t *image = create_bmp(width, height, 24);
 		context->_internal = image;
-	} else {
+	} else if (type == WINDOW_CONTEXT_TYPE) {
 		puts("Unsupported graphics context");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	return context;
 }
@@ -33,21 +35,25 @@ void destroy_context(struct graphics_context *context) {
 		free(context->_internal);
 		free(context->depth_buffer);
 		free(context);
+	} else if (context->type == WINDOW_CONTEXT_TYPE) {
+		puts("Unsupported graphics context");
+		exit(EXIT_FAILURE);
 	}
 }
 
-void bmp_context_save(struct graphics_context *context, char name[]) {
+void context_activate(struct graphics_context *context) {
 	if (context->type == BMP_CONTEXT_TYPE) {
-		write_bmp(name, context->_internal);
-	} else {
-		puts("Attempting to save non-bmp context");
+		context->render_callback(context);
+		write_bmp("output.bmp", context->_internal);
+	} else if (context->type == WINDOW_CONTEXT_TYPE) {
+		puts("Unsupported graphics context");
 		exit(EXIT_FAILURE);
 	}
 }
 
 // ********** Z-buffering ***************
 float depth_buffer_get(int x, int y, struct graphics_context *context) {
-	return context->depth_buffer[context->width * x + y];  
+	return context->depth_buffer[context->width * x + y];
 }
 
 void depth_buffer_set(int x, int y, float value, struct graphics_context *context) {
@@ -221,5 +227,3 @@ void triangle(struct vertex vertices[3],
 		}
 	}
 }
-
-

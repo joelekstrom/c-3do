@@ -20,21 +20,24 @@ typedef enum {
     SHADING_TYPE_GORAUD
 } SHADING_TYPE;
 
-void render(struct model model, 
-			transform_3d transform, 
-			transform_3d view, 
-			float perspective,
-			vec3 light_direction,
-			rgb_color color,
-			struct graphics_context *context, 
-			SHADING_TYPE shading_type,
-			struct texture *texture,
-			rgb_color *wireframe_color);
+void render_model(struct model model,
+				  transform_3d transform,
+				  transform_3d view,
+				  float perspective,
+				  vec3 light_direction,
+				  rgb_color color,
+				  struct graphics_context *context,
+				  SHADING_TYPE shading_type,
+				  struct texture *texture,
+				  rgb_color *wireframe_color);
+
+void draw_context(struct graphics_context *context);
+
+struct model model;
+struct texture texture;
 
 int main() {
-    struct graphics_context *context = create_context(BMP_CONTEXT_TYPE, 800, 800);
-
-    clear(context, black);
+    struct graphics_context *context = create_context(BMP_CONTEXT_TYPE, 800, 800, &draw_context);
 
 	// load .sob-file
     FILE *fp = fopen("model/head.obj", "r");
@@ -43,11 +46,21 @@ int main() {
 		return 1;
     }
 
-    struct model model = load_model(fp);
-	struct texture texture = load_texture("model/head_vcols.bmp");
-    fclose(fp);
+    model = load_model(fp);
+	fclose(fp);
+	texture = load_texture("model/head_vcols.bmp");
 
-    // Center camera on 0.0 and a bit back
+	context_activate(context);
+
+    unload_model(model);
+    destroy_context(context);
+    return 0;
+}
+
+void draw_context(struct graphics_context *context) {
+	clear(context, black);
+
+	// Center camera on 0.0 and a bit back
     transform_3d view = transform_3d_make_translation(context->width / 2.0, context->height / 2.0, 100.0);
     float perspective = 0.0005;
 
@@ -60,21 +73,16 @@ int main() {
     transform_3d scale = transform_3d_make_scale(400.0, 400.0, 400.0);
     transform_3d translate = transform_3d_make_translation(0.0, 300.0, 1.0);
     transform_3d scale_and_translate = transform_3d_concat(scale, translate);
-    render(model,
-		   transform_3d_concat(flip_yz, scale_and_translate),
-		   view,
-		   perspective,
-		   light_direction,
-		   white,
-		   context,
-		   SHADING_TYPE_GORAUD,
-		   &texture,
-		   NULL);
-	
-    unload_model(model);
-    bmp_context_save(context, "output.bmp");
-    destroy_context(context);
-    return 0;
+    render_model(model,
+				 transform_3d_concat(flip_yz, scale_and_translate),
+				 view,
+				 perspective,
+				 light_direction,
+				 white,
+				 context,
+				 SHADING_TYPE_GORAUD,
+				 &texture,
+				 NULL);
 }
 
 vec3 apply_perspective(vec3 position, transform_3d view, float amount);
@@ -87,16 +95,17 @@ struct fragment_shader_input {
 	struct texture *normal_map;
 };
 
-void render(struct model model, 
-			transform_3d transform, 
-			transform_3d view, 
-			float perspective,
-			vec3 light_direction,
-			rgb_color color,
-			struct graphics_context *context, 
-			SHADING_TYPE shading_type,
-			struct texture *texture,
-			rgb_color *wireframe_color)
+
+void render_model(struct model model, 
+				  transform_3d transform, 
+				  transform_3d view, 
+				  float perspective,
+				  vec3 light_direction,
+				  rgb_color color,
+				  struct graphics_context *context, 
+				  SHADING_TYPE shading_type,
+				  struct texture *texture,
+				  rgb_color *wireframe_color)
 {
     for (int i = 0; i < model.num_faces; i++) {
 		struct face f = model.faces[i];
