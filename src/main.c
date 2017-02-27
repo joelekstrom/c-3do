@@ -37,7 +37,7 @@ struct model model;
 struct texture texture;
 
 int main() {
-    struct graphics_context *context = create_context(BMP_CONTEXT_TYPE, 800, 800, &draw_context);
+    struct graphics_context *context = create_context(WINDOW_CONTEXT_TYPE, 800, 800, &draw_context);
 
 	// load .sob-file
     FILE *fp = fopen("model/head.obj", "r");

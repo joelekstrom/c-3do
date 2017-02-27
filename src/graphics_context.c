@@ -30,7 +30,7 @@ struct graphics_context *create_context(context_type type, int width, int height
 			SDL_Quit();
 		}
 
-		SDL_Window *window = SDL_CreateWindow("c3do", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_OPENGL);
+		SDL_Window *window = SDL_CreateWindow("c3do", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
 		if (window == NULL) {
 			printf("Could not create window: %s\n", SDL_GetError());
 		}
@@ -54,7 +54,24 @@ void context_activate(struct graphics_context *context) {
 		context->render_callback(context);
 		write_bmp("output.bmp", context->_internal);
 	} else if (context->type == WINDOW_CONTEXT_TYPE) {
-		SDL_Delay(3000);
+		SDL_Renderer *renderer = SDL_CreateRenderer(context->_internal, -1, SDL_RENDERER_ACCELERATED);
+		SDL_Event event;
+		bool quit = false;
+		while (!quit) {
+			while (SDL_PollEvent(&event)) {
+				if (event.type == SDL_QUIT){
+					quit = true;
+				}
+				if (event.type == SDL_KEYDOWN){
+					quit = true;
+				}
+				if (event.type == SDL_MOUSEBUTTONDOWN){
+					context->render_callback(context);
+					SDL_RenderPresent(renderer);
+				}
+			}
+		}
+		SDL_DestroyRenderer(renderer);
 	}
 }
 
@@ -72,24 +89,26 @@ void depth_buffer_set(int x, int y, float value, struct graphics_context *contex
 void draw_fragment(vec3 coordinate, rgb_color color, struct graphics_context *context) {
 	int x = (int)roundf(coordinate.x);
 	int y = (int)roundf(coordinate.y);
-	if (context->type == BMP_CONTEXT_TYPE) {
 
-		// Discard fragments outside buffer bounds
-		if (x < 0 || x >= context->width || y < 0 || y >= context->height) {
-			return;
-		}
+	// Discard fragments outside buffer bounds
+	if (x < 0 || x >= context->width || y < 0 || y >= context->height) {
+		return;
+	}
 			
-		// Depth check (use the z-value for z-buffering)
-		if (context->depth_buffer) {
-			float current_depth = depth_buffer_get(x, y, context);
-			if (current_depth != Z_BUFFER_NONE && coordinate.z > current_depth) 
-				return;
-			depth_buffer_set(x, y, coordinate.z, context);
-		}
+	// Depth check (use the z-value for z-buffering)
+	if (context->depth_buffer) {
+		float current_depth = depth_buffer_get(x, y, context);
+		if (current_depth != Z_BUFFER_NONE && coordinate.z > current_depth)
+			return;
+		depth_buffer_set(x, y, coordinate.z, context);
+	}
+
+	if (context->type == BMP_CONTEXT_TYPE) {
 		set_pixel(context->_internal, x, y, color.r, color.g, color.b);
-	}  else {
-		puts("Unsupported graphics context");
-		exit(EXIT_FAILURE);	
+	} else if (context->type == WINDOW_CONTEXT_TYPE) {
+		SDL_Renderer *renderer = SDL_GetRenderer(context->_internal);
+		SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255);
+		SDL_RenderDrawPoint(renderer, x, y);
 	}
 }
 
