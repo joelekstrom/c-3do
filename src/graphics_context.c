@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdbool.h>
+#include <SDL2/SDL.h>
 
 #define Z_BUFFER_NONE UINT_MAX
 
@@ -24,8 +25,16 @@ struct graphics_context *create_context(context_type type, int width, int height
 		bmp_t *image = create_bmp(width, height, 24);
 		context->_internal = image;
 	} else if (type == WINDOW_CONTEXT_TYPE) {
-		puts("Unsupported graphics context");
-		exit(EXIT_FAILURE);
+		if (SDL_Init(SDL_INIT_VIDEO) != 0){
+			printf("SDL_Init Error: %s\n", SDL_GetError());
+			SDL_Quit();
+		}
+
+		SDL_Window *window = SDL_CreateWindow("c3do", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_OPENGL);
+		if (window == NULL) {
+			printf("Could not create window: %s\n", SDL_GetError());
+		}
+		context->_internal = window;
 	}
 	return context;
 }
@@ -36,8 +45,7 @@ void destroy_context(struct graphics_context *context) {
 		free(context->depth_buffer);
 		free(context);
 	} else if (context->type == WINDOW_CONTEXT_TYPE) {
-		puts("Unsupported graphics context");
-		exit(EXIT_FAILURE);
+		SDL_DestroyWindow(context->_internal);
 	}
 }
 
@@ -46,8 +54,7 @@ void context_activate(struct graphics_context *context) {
 		context->render_callback(context);
 		write_bmp("output.bmp", context->_internal);
 	} else if (context->type == WINDOW_CONTEXT_TYPE) {
-		puts("Unsupported graphics context");
-		exit(EXIT_FAILURE);
+		SDL_Delay(3000);
 	}
 }
 
