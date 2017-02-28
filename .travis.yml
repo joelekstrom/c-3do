@@ -4,6 +4,9 @@ compiler:
 - gcc
 
 before_script:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libsdl2-dev
+  - sudo apt-get install -y libsdl2-image-dev
   - mkdir bin
   - cd bin
   - cmake ..
