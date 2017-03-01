@@ -71,7 +71,9 @@ void draw_context(struct graphics_context *context) {
     flip_yz.sy = -1.0;
     flip_yz.sz = -1.0;
     transform_3d scale = transform_3d_make_scale(400.0, 400.0, 400.0);
-    transform_3d translate = transform_3d_make_translation(0.0, 300.0, 1.0);
+	static float counter = 0.0;
+	counter += 0.1;
+    transform_3d translate = transform_3d_make_translation(sinf(counter) * 100, 300.0, 1.0);
     transform_3d scale_and_translate = transform_3d_concat(scale, translate);
     render_model(model,
 				 transform_3d_concat(flip_yz, scale_and_translate),

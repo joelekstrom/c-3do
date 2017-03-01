@@ -56,21 +56,22 @@ void context_activate(struct graphics_context *context) {
 	} else if (context->type == WINDOW_CONTEXT_TYPE) {
 		SDL_Renderer *renderer = SDL_CreateRenderer(context->_internal, -1, SDL_RENDERER_ACCELERATED);
 		SDL_Event event;
-		bool quit = false;
-		while (!quit) {
-			while (SDL_PollEvent(&event)) {
-				if (event.type == SDL_QUIT){
-					quit = true;
-				}
-				if (event.type == SDL_KEYDOWN){
-					quit = true;
-				}
-				if (event.type == SDL_MOUSEBUTTONDOWN){
-					context->render_callback(context);
-					SDL_RenderPresent(renderer);
-				}
+		while (SDL_WaitEvent(&event)) {
+			switch (event.type) {
+			case SDL_QUIT:
+				goto quit;
+			case SDL_MOUSEBUTTONDOWN:
+			case SDL_MOUSEMOTION:
+				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+				SDL_RenderClear(renderer);
+				context->render_callback(context);
+				SDL_RenderPresent(renderer);
+				break;
+			default:
+				break;
 			}
 		}
+	quit:
 		SDL_DestroyRenderer(renderer);
 	}
 }
@@ -136,11 +137,19 @@ void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color col
 }
 
 void clear(struct graphics_context *context, rgb_color color) {
-	for (int x = 0; x < context->width; x++) {
-		for (int y = 0; y < context->height; y++) {
-			vec3 coordinate = {.x = x, .y = y};
-			draw_fragment(coordinate, color, context);
+	// Clear Z-buffer
+	memset(context->depth_buffer, Z_BUFFER_NONE, sizeof(float) * context->width * context->height);
+
+	if (context->type == BMP_CONTEXT_TYPE) {
+		for (int x = 0; x < context->width; x++) {
+			for (int y = 0; y < context->height; y++) {
+				vec3 coordinate = {.x = x, .y = y};
+				draw_fragment(coordinate, color, context);
+			}
 		}
+	} else if (context->type == WINDOW_CONTEXT_TYPE) {
+		SDL_Renderer *renderer = SDL_GetRenderer(context->_internal);
+		SDL_RenderClear(renderer);
 	}
 }
 
