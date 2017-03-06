@@ -19,7 +19,6 @@ typedef struct transform_3d {
 	float am, bm, cm, dm;
 } transform_3d;
 
-// Math
 float dot_product_2d(vec2 v1, vec2 v2);
 float dot_product_3d(vec3 v1, vec3 v2);
 vec3 cross_product(vec3 v1, vec3 v2);

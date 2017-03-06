@@ -218,7 +218,7 @@ void flat_shader(struct vertex *v, transform_3d model, transform_3d view, float 
 	apply_transforms(v, model, view);
 	v->coordinate = apply_perspective(v->coordinate, view, perspective);
 	float light_intensity = dot_product_3d(face_normal, vec3_unit(light_direction));
-	v->color = interpolate_color(black, v->color, light_intensity);
+	v->color = interpolate_color(black, v->color, 1.0 - light_intensity);
 }
 
 rgb_color fragment_shader(struct vertex * const interpolated_v, void *input) {

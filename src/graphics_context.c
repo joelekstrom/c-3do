@@ -1,5 +1,5 @@
+
 #include "graphics_context.h"
-#include "nano_bmp.h"
 #include "textures.h"
 #include <string.h>
 #include <limits.h>
@@ -198,7 +198,7 @@ void flat_triangle(struct vertex anchor,
 {
 	int height = abs((int)roundf(anchor.coordinate.y) - (int)roundf(left_leg.coordinate.y));
 	draw_point(anchor, shader_input, fragment_shader, context);
-		
+
 	for (int y = 1; y <= height; y++) {
 		float t = (float)y / (float)height;
 
@@ -206,6 +206,9 @@ void flat_triangle(struct vertex anchor,
 		struct vertex left_point = vertex_lerp(anchor, left_leg, t);
 		struct vertex right_point = vertex_lerp(anchor, right_leg, t);
 		int width = roundf(right_point.coordinate.x) - roundf(left_point.coordinate.x);
+		if (width == 0) {
+			continue;
+		}
 
 		for (int x = 0; x <= width; x++) {
 			float tx = (float)x / (float)width;
@@ -225,7 +228,7 @@ void triangle(struct vertex vertices[3],
 			  rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input),
 			  struct graphics_context *context)
 {	
-	// Sort points it top->left->right
+	// Sort points top->left->right
 	qsort(vertices, 3, sizeof(struct vertex), &compare_vertices);
 
 	// If the y-value of the first and second vertices are the same, we have a flat-top triangle
