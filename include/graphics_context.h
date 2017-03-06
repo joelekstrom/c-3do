@@ -14,6 +14,7 @@ struct graphics_context {
 	context_type type;
 	int width;
 	int height;
+	uint32_t *pixel_buffer;
 	float *depth_buffer;
 	void (*render_callback)(struct graphics_context *context);
 	void *_internal;

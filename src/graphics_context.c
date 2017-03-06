@@ -15,16 +15,15 @@ rgb_color texture_sample(struct texture t, vec2 coordinate);
 struct graphics_context *create_context(context_type type, int width, int height, void (*render_callback)(struct graphics_context *context)) {
 	struct graphics_context *context = (struct graphics_context *)malloc(sizeof(struct graphics_context));
 	context->depth_buffer = (float *)malloc(sizeof(float) * width * height);
+	context->pixel_buffer = (uint32_t *)malloc(sizeof(uint32_t) * width * height);
 	memset(context->depth_buffer, Z_BUFFER_NONE, sizeof(float) * width * height);
 	context->type = type;
 	context->width = width;
 	context->height = height;
 	context->render_callback = render_callback;
+	context->_internal = NULL;
 
-	if (type == BMP_CONTEXT_TYPE) {
-		bmp_t *image = create_bmp(width, height, 24);
-		context->_internal = image;
-	} else if (type == WINDOW_CONTEXT_TYPE) {
+	if (type == WINDOW_CONTEXT_TYPE) {
 		if (SDL_Init(SDL_INIT_VIDEO) != 0){
 			printf("SDL_Init Error: %s\n", SDL_GetError());
 			SDL_Quit();
@@ -40,39 +39,47 @@ struct graphics_context *create_context(context_type type, int width, int height
 }
 
 void destroy_context(struct graphics_context *context) {
-	if (context->type == BMP_CONTEXT_TYPE) {
-		free(context->_internal);
-		free(context->depth_buffer);
-		free(context);
-	} else if (context->type == WINDOW_CONTEXT_TYPE) {
+	if (context->type == WINDOW_CONTEXT_TYPE) {
 		SDL_DestroyWindow(context->_internal);
 	}
+	free(context->pixel_buffer);
+	free(context->depth_buffer);
+	free(context);
+}
+
+SDL_Surface *create_surface_from_context(struct graphics_context *context) {
+	return SDL_CreateRGBSurfaceFrom(context->pixel_buffer,
+									context->width,
+									context->height,
+									32,
+									context->width * sizeof(uint32_t),
+									0xff000000, 0x00ff0000, 0x0000ff00, 0);
 }
 
 void context_activate(struct graphics_context *context) {
 	if (context->type == BMP_CONTEXT_TYPE) {
 		context->render_callback(context);
-		write_bmp("output.bmp", context->_internal);
+		SDL_Surface *surface = create_surface_from_context(context);
+		SDL_SaveBMP(surface, "output.bmp");
+		SDL_FreeSurface(surface);
 	} else if (context->type == WINDOW_CONTEXT_TYPE) {
-		SDL_Renderer *renderer = SDL_CreateRenderer(context->_internal, -1, SDL_RENDERER_ACCELERATED);
 		SDL_Event event;
 		while (SDL_WaitEvent(&event)) {
 			switch (event.type) {
 			case SDL_QUIT:
-				goto quit;
+				return;
 			case SDL_MOUSEBUTTONDOWN:
 			case SDL_MOUSEMOTION:
-				SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-				SDL_RenderClear(renderer);
 				context->render_callback(context);
-				SDL_RenderPresent(renderer);
+				SDL_Surface *surface = create_surface_from_context(context);
+				SDL_BlitSurface(surface, NULL, SDL_GetWindowSurface(context->_internal), NULL);
+				SDL_UpdateWindowSurface(context->_internal);
+				SDL_FreeSurface(surface);
 				break;
 			default:
 				break;
 			}
 		}
-	quit:
-		SDL_DestroyRenderer(renderer);
 	}
 }
 
@@ -104,13 +111,7 @@ void draw_fragment(vec3 coordinate, rgb_color color, struct graphics_context *co
 		depth_buffer_set(x, y, coordinate.z, context);
 	}
 
-	if (context->type == BMP_CONTEXT_TYPE) {
-		set_pixel(context->_internal, x, y, color.r, color.g, color.b);
-	} else if (context->type == WINDOW_CONTEXT_TYPE) {
-		SDL_Renderer *renderer = SDL_GetRenderer(context->_internal);
-		SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255);
-		SDL_RenderDrawPoint(renderer, x, y);
-	}
+	context->pixel_buffer[context->width * y + x] = rgba_from_color(color);
 }
 
 void swapf(float *a, float *b) {
@@ -139,17 +140,9 @@ void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color col
 void clear(struct graphics_context *context, rgb_color color) {
 	// Clear Z-buffer
 	memset(context->depth_buffer, Z_BUFFER_NONE, sizeof(float) * context->width * context->height);
-
-	if (context->type == BMP_CONTEXT_TYPE) {
-		for (int x = 0; x < context->width; x++) {
-			for (int y = 0; y < context->height; y++) {
-				vec3 coordinate = {.x = x, .y = y};
-				draw_fragment(coordinate, color, context);
-			}
-		}
-	} else if (context->type == WINDOW_CONTEXT_TYPE) {
-		SDL_Renderer *renderer = SDL_GetRenderer(context->_internal);
-		SDL_RenderClear(renderer);
+	uint32_t rgba = rgba_from_color(color);
+	for (int i = 0; i < context->width * context->height; i++) {
+		context->pixel_buffer[i] = rgba;
 	}
 }
 

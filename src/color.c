@@ -13,3 +13,12 @@ rgb_color multiply_color(rgb_color color, float value) {
                          .b = color.b * value };
 	return result;
 }
+
+uint32_t rgba_from_color(rgb_color color) {
+	uint32_t result = 0;
+	result |= (color.r << 24);
+	result |= (color.g << 16);
+	result |= (color.b << 8);
+	result |= 0xff;
+	return result;
+}
