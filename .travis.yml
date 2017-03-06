@@ -1,12 +1,18 @@
 language: c
+dist: trusty
+sudo: true
 compiler:
 - clang
 - gcc
 
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - libsdl2-dev
+
 before_script:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y libsdl2-dev
-  - sudo apt-get install -y libsdl2-image-dev
   - mkdir bin
   - cd bin
   - cmake ..
