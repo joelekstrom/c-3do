@@ -3,6 +3,7 @@
 
 #include "geometry.h"
 #include "color.h"
+#include "shaders.h"
 #include <stdlib.h>
 
 typedef enum {
@@ -18,13 +19,6 @@ struct graphics_context {
 	float *depth_buffer;
 	void (*render_callback)(struct graphics_context *context);
 	void *_internal;
-};
-
-struct vertex {
-	vec3 coordinate;
-	rgb_color color;
-	vec3 normal;
-	vec2 texture_coordinate;
 };
 
 struct graphics_context *create_context(context_type type, int width, int height, void (*render_callback)(struct graphics_context *context));
@@ -48,8 +42,8 @@ rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value);
  which it is then allowed to transform/change colors of.
  */
 void triangle(struct vertex vertices[3],
-			  void *shader_input,
-			  rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input),
+			  struct fragment_shader_input shader_input,
+			  rgb_color (*fragment_shader)(struct fragment_shader_input input),
 			  struct graphics_context *context);
 
 #endif

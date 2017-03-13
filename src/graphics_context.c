@@ -157,8 +157,9 @@ struct vertex vertex_lerp(struct vertex a, struct vertex b, float value) {
 	return result;
 }
 
-void draw_point(struct vertex p, void *shader_input, rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input), struct graphics_context *context) {
-	rgb_color color = fragment_shader ? fragment_shader(&p, shader_input) : p.color;
+void draw_point(struct vertex p, struct fragment_shader_input shader_input, rgb_color (*fragment_shader)(struct fragment_shader_input), struct graphics_context *context) {
+	shader_input.interpolated_v = p;
+	rgb_color color = fragment_shader ? fragment_shader(shader_input) : p.color;
 	draw_fragment(p.coordinate, color, context);
 }
 
@@ -192,8 +193,8 @@ int compare_vertices(const void *a, const void *b) {
 void flat_triangle(struct vertex anchor,
 				   struct vertex left_leg,
 				   struct vertex right_leg,
-				   void *shader_input,
-				   rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input),
+				   struct fragment_shader_input shader_input,
+				   rgb_color (*fragment_shader)(struct fragment_shader_input),
 				   struct graphics_context *context)
 {
 	int height = abs((int)roundf(anchor.coordinate.y) - (int)roundf(left_leg.coordinate.y));
@@ -224,8 +225,8 @@ void flat_triangle(struct vertex anchor,
  and then delegates drawing to flat_triangle.
  */
 void triangle(struct vertex vertices[3],
-			  void *shader_input,
-			  rgb_color (*fragment_shader)(struct vertex * const interpolated_v, void *input),
+			  struct fragment_shader_input shader_input,
+			  rgb_color (*fragment_shader)(struct fragment_shader_input),
 			  struct graphics_context *context)
 {	
 	// Sort points top->left->right

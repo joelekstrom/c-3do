@@ -37,11 +37,8 @@ vec3 vec3_lerp(vec3 a, vec3 b, float value);
 extern const transform_3d transform_3d_identity;
 transform_3d transform_3d_make_translation(float tx, float ty, float sz);
 transform_3d transform_3d_make_scale(float sx, float sy, float sz);
+transform_3d transform_3d_make_rotation(float rx, float ry, float rz);
 transform_3d transform_3d_concat(transform_3d t1, transform_3d t2);
 vec3 transform_3d_apply(vec3 v, transform_3d t);
-
-// Vertex sorting
-void sort_vertices_y(vec3 vertices[], int count);
-void get_bounding_box_2d(vec2 vertices[], int count, float *min_x, float *min_y, float *max_x, float *max_y);
 
 #endif
