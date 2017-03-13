@@ -10,18 +10,23 @@ struct texture load_texture(char *file_name) {
 
 	texture.width = better_surface->w;
 	texture.height = better_surface->h;
-	texture._internal = better_surface;
 
+	size_t buffer_size = texture.width * texture.height * sizeof(int32_t);
+	void *buffer = malloc(buffer_size);
+	memcpy(buffer, better_surface->pixels, buffer_size);
+	texture._internal = buffer;
+	SDL_FreeSurface(better_surface);
 	return texture;
 }
 
 rgb_color texture_sample(struct texture t, vec2 coordinate) {
-	rgb_color color;
 	int x = (int)(coordinate.x * t.width);
 	int y = (int)((1.0 - coordinate.y) * t.height);
-
-	SDL_Surface *surface = t._internal;
-	uint32_t pixel = *((uint32_t *)surface->pixels + y * surface->w + x);
-	SDL_GetRGB(pixel, surface->format, &color.r, &color.g, &color.b);
+	uint32_t *pixel_buffer = (uint32_t *)t._internal;
+	uint32_t pixel = pixel_buffer[t.width * y + x];
+	rgb_color color;
+	color.r = pixel >> 24;
+	color.g = pixel >> 16;
+	color.b = pixel >> 8;
 	return color;
 }
