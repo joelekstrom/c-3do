@@ -15,22 +15,6 @@ rgb_color white = {255, 255, 255};
 rgb_color yellow = {255, 255, 0};
 rgb_color black = {0, 0, 0};
 
-typedef enum {
-    SHADING_TYPE_FLAT,
-    SHADING_TYPE_GORAUD
-} SHADING_TYPE;
-
-void render_model(struct model model,
-				  transform_3d transform,
-				  transform_3d view,
-				  float perspective,
-				  vec3 light_direction,
-				  rgb_color color,
-				  struct graphics_context *context,
-				  SHADING_TYPE shading_type,
-				  struct texture *texture,
-				  rgb_color *wireframe_color);
-
 void draw_context(struct graphics_context *context);
 
 struct model model;
@@ -57,15 +41,42 @@ int main() {
     return 0;
 }
 
+struct directional_light {
+	vec3 direction;
+	rgb_color intensity;
+};
+
+struct render_options {
+	transform_3d model;
+	transform_3d view;
+	float perspective;
+	rgb_color ambient_light;
+	struct directional_light *directional_lights;
+	int directional_light_count;
+};
+
+struct vertex_shader_input {
+	struct vertex vertex;
+	vec3 face_normal;
+	struct render_options options;
+};
+
+void render_model(struct model model,
+				  struct render_options options,
+				  struct vertex (*vertex_shader)(struct vertex_shader_input),
+				  struct graphics_context *context,
+				  struct texture *texture,
+				  rgb_color *wireframe_color);
+
+struct vertex goraud_shader(struct vertex_shader_input input);
+struct vertex flat_shader(struct vertex_shader_input input);
+
 void draw_context(struct graphics_context *context) {
 	clear(context, black);
 
 	// Center camera on 0.0 and a bit back
     transform_3d view = transform_3d_make_translation(context->width / 2.0, context->height / 2.0, 100.0);
     float perspective = 0.0005;
-
-	// Add a light source pointing straight forward from the camera
-	vec3 light_direction = {.x = 0.0, .y = 0.0, .z = 1.0};
 
     transform_3d flip_yz = transform_3d_identity;
     flip_yz.sy = -1.0;
@@ -75,37 +86,43 @@ void draw_context(struct graphics_context *context) {
 	counter += 0.1;
     transform_3d translate = transform_3d_make_translation(sinf(counter) * 100, 300.0, 1.0);
     transform_3d scale_and_translate = transform_3d_concat(scale, translate);
+
+	rgb_color ambient_light = {0, 0, 0};
+	struct directional_light light_1 = {.intensity = {200, 200, 200}, .direction = {0.0, 0.0, 1.0}};
+	struct directional_light light_2 = {.intensity = {0, 0, 30}, .direction = {1.0, 0.0, 0.0}};
+	struct directional_light light_3 = {.intensity = {0, 50, 0}, .direction = {0.0, 1.0, 0.0}};
+	struct directional_light lights[] = {light_1, light_2, light_3};
+
+	struct render_options options = {
+		.model = transform_3d_concat(flip_yz, scale_and_translate),
+		.view = view,
+		.perspective = perspective,
+		.ambient_light = ambient_light,
+		.directional_lights = (struct directional_light *)&lights,
+		.directional_light_count = 3
+	};
+
     render_model(model,
-				 transform_3d_concat(flip_yz, scale_and_translate),
-				 view,
-				 perspective,
-				 light_direction,
-				 white,
+				 options,
+				 &goraud_shader,
 				 context,
-				 SHADING_TYPE_GORAUD,
 				 &texture,
 				 NULL);
 }
-
-vec3 apply_perspective(vec3 position, transform_3d view, float amount);
-void goraud_shader(struct vertex *v, transform_3d model, transform_3d view, float perspective, vec3 light_direction);
-void flat_shader(struct vertex *v, transform_3d model, transform_3d view, float perspective, vec3 light_direction, vec3 face_normal);
-rgb_color fragment_shader(struct vertex * const interpolated_v, void *input);
 
 struct fragment_shader_input {
 	struct texture *texture;
 	struct texture *normal_map;
 };
 
+vec3 apply_perspective(vec3 position, transform_3d view, float amount);
+rgb_color fragment_shader(struct vertex * const interpolated_v, void *input);
 
-void render_model(struct model model, 
-				  transform_3d transform, 
-				  transform_3d view, 
-				  float perspective,
-				  vec3 light_direction,
-				  rgb_color color,
-				  struct graphics_context *context, 
-				  SHADING_TYPE shading_type,
+
+void render_model(struct model model,
+				  struct render_options options,
+				  struct vertex (*vertex_shader)(struct vertex_shader_input),
+				  struct graphics_context *context,
 				  struct texture *texture,
 				  rgb_color *wireframe_color)
 {
@@ -115,28 +132,19 @@ void render_model(struct model model,
 		// Calculate the face normal which is used for back-face culling and flat shading
 		vec3 v = vec3_subtract(*f.vertices[1], *f.vertices[0]);
 		vec3 u = vec3_subtract(*f.vertices[2], *f.vertices[0]);
-		vec3 face_normal = vec3_unit(cross_product(u, v));
+		vec3 face_normal = vec3_unit(cross_product(v, u));
 		
 		// Create vertex objects that are used by shaders/drawing code
 		struct vertex vertices[3];
 		for (int v = 0; v < 3; v++) {
-			struct vertex vertex;
-			vertex.coordinate = *f.vertices[v];
-			vertex.texture_coordinate = *f.textures[v];
-			vertex.normal = *f.normals[v];
-			vertex.color = color;
-		
-			// Apply the vertex shader
-			switch (shading_type) {
-			case SHADING_TYPE_GORAUD:
-				goraud_shader(&vertex, transform, view, perspective, light_direction);
-				break;
-			case SHADING_TYPE_FLAT:
-				flat_shader(&vertex, transform, view, perspective, light_direction, face_normal);
-				break;
-			}
-			
-			vertices[v] = vertex;
+			struct vertex vertex = {.coordinate = *f.vertices[v],
+									.texture_coordinate = *f.textures[v],
+									.normal = *f.normals[v]};
+
+			struct vertex_shader_input shader_input = {.vertex = vertex,
+													   .face_normal = face_normal,
+													   .options = options};
+			vertices[v] = vertex_shader(shader_input);
 		}
 
 		// Get the new face normal and drop triangles that are "back facing",
@@ -144,7 +152,8 @@ void render_model(struct model model,
 		v = vec3_subtract(vertices[1].coordinate, vertices[0].coordinate);
 		u = vec3_subtract(vertices[2].coordinate, vertices[0].coordinate);
 		vec3 new_face_normal = vec3_scale(vec3_unit(cross_product(u, v)), 1.0);
-		float angle = dot_product_3d(new_face_normal, vec3_unit(light_direction));
+		vec3 camera_direction = {0.0, 0.0, 1.0}; // Camera is always pointing "forward" after all transformations
+		float angle = dot_product_3d(new_face_normal, camera_direction);
 		if (angle < 0.0) {
 			continue; // Back-face culling
         }
@@ -198,32 +207,55 @@ vec3 apply_perspective(vec3 position, transform_3d view, float amount) {
     return result;
 }
 
-void goraud_shader(struct vertex *v, transform_3d model, transform_3d view, float perspective, vec3 light_direction) {
+struct vertex goraud_shader(struct vertex_shader_input input) {
+	struct vertex v = input.vertex;
+
 	// Apply all transforms. Rotation, scaling, translation etc
-	apply_transforms(v, model, view);
+	apply_transforms(&v, input.options.model, input.options.view);
 
 	// Apply perspective (move x and y further to/away from the middle
 	// depending on the Z value, to give the illusion of depth)
-	v->coordinate = apply_perspective(v->coordinate, view, perspective);
+	v.coordinate = apply_perspective(v.coordinate, input.options.view, input.options.perspective);
+
+	// Start by setting the color to the ambient light
+	v.color = input.options.ambient_light;
 		
 	// Calculate light intensity by checking the angle of the vertex normal
 	// to the angle of the light direction. If vertex is directly facing the
 	// light direction, it will be fully illuminated, and if it's >= 90 degrees
 	// it will be totally black
-	float light_intensity = dot_product_3d(v->normal, vec3_unit(light_direction));
-	v->color = interpolate_color(black, v->color, light_intensity);
+	for (int i = 0; i < input.options.directional_light_count; i++) {
+		struct directional_light *light = &input.options.directional_lights[i];
+		float dot_product = dot_product_3d(v.normal, vec3_unit(light->direction));
+		if (dot_product > 0.0) {
+			rgb_color light_color = scale_color(light->intensity, dot_product);
+			v.color = add_color(v.color, light_color);
+		}
+	}
+	return v;
 }
 
-void flat_shader(struct vertex *v, transform_3d model, transform_3d view, float perspective, vec3 light_direction, vec3 face_normal) {
-	apply_transforms(v, model, view);
-	v->coordinate = apply_perspective(v->coordinate, view, perspective);
-	float light_intensity = dot_product_3d(face_normal, vec3_unit(light_direction));
-	v->color = interpolate_color(black, v->color, 1.0 - light_intensity);
+struct vertex flat_shader(struct vertex_shader_input input) {
+	struct vertex v = input.vertex;
+	apply_transforms(&v, input.options.model, input.options.view);
+	v.coordinate = apply_perspective(v.coordinate, input.options.view, input.options.perspective);
+	v.color = input.options.ambient_light;
+	for (int i = 0; i < input.options.directional_light_count; i++) {
+		struct directional_light *light = &input.options.directional_lights[i];
+		float dot_product = dot_product_3d(input.face_normal, vec3_unit(light->direction));
+		if (dot_product > 0.0) {
+			rgb_color light_color = scale_color(light->intensity, dot_product);
+			v.color = add_color(v.color, light_color);
+		}
+	}
+	return v;
 }
 
 rgb_color fragment_shader(struct vertex * const interpolated_v, void *input) {
 	struct fragment_shader_input *args = (struct fragment_shader_input *)input;
 	rgb_color texture_color = texture_sample(*args->texture, interpolated_v->texture_coordinate);
+	rgb_color light_intensity = interpolated_v->color;
+	return multiply_colors(light_intensity, texture_color);
 
 	// Since we currently render from white -> black with light intensity,
 	// we can use the red channel as an intensity value for the texture

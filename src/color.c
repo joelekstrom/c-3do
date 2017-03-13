@@ -7,10 +7,25 @@ rgb_color interpolate_color(rgb_color c1, rgb_color c2, float value) {
 	return result;
 }
 
-rgb_color multiply_color(rgb_color color, float value) {
+rgb_color scale_color(rgb_color color, float value) {
 	rgb_color result = { .r = color.r * value,
                          .g = color.g * value,
                          .b = color.b * value };
+	return result;
+}
+
+rgb_color multiply_colors(rgb_color c1, rgb_color c2) {
+	rgb_color result = { .r = c1.r * (c2.r / 255.0),
+                         .g = c1.g * (c2.g / 255.0),
+                         .b = c1.b * (c2.b / 255.0)};
+	return result;
+}
+
+rgb_color add_color(rgb_color color, rgb_color other_color) {
+	int r = color.r + other_color.r;
+	int g = color.g + other_color.g;
+	int b = color.b + other_color.b;
+	rgb_color result = {r <= 255 ? r : 255, g <= 255 ? g : 255, b <= 255 ? b : 255};
 	return result;
 }
 
