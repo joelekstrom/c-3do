@@ -107,8 +107,8 @@ transform_3d transform_3d_translate(transform_3d t, float tx, float ty, float tz
 }
 
 transform_3d transform_3d_scale(transform_3d t, float sx, float sy, float sz) {
-	t.sx += sx;
-	t.sy += sy;
-	t.sz += sz;
+	t.sx *= sx;
+	t.sy *= sy;
+	t.sz *= sz;
 	return t;
 }
