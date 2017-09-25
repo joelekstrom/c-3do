@@ -41,4 +41,7 @@ transform_3d transform_3d_make_rotation(float rx, float ry, float rz);
 transform_3d transform_3d_concat(transform_3d t1, transform_3d t2);
 vec3 transform_3d_apply(vec3 v, transform_3d t);
 
+transform_3d transform_3d_translate(transform_3d t, float tx, float ty, float sz);
+transform_3d transform_3d_scale(transform_3d t, float sx, float sy, float sz);
+
 #endif

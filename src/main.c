@@ -8,16 +8,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdbool.h>
 
-void draw_context(struct graphics_context *context);
+void render(struct graphics_context *context);
+void on_window_event(struct graphics_context *context, SDL_Event event);
 
 struct model model;
 struct texture texture;
+transform_3d model_transform;
 
 int main() {
-    struct graphics_context *context = create_context(WINDOW_CONTEXT_TYPE, 800, 800, &draw_context);
+    struct graphics_context *context = create_context(800, 800);
 
-	// load .sob-file
     FILE *fp = fopen("model/head.obj", "r");
     if (!fp) {
 		fprintf(stderr, "Failed to open model file");
@@ -28,11 +30,61 @@ int main() {
 	fclose(fp);
 	texture = load_texture("model/head_vcols.bmp");
 
-	context_activate(context);
+	transform_3d transform = transform_3d_identity;
+	transform = transform_3d_scale(transform, 400.0, -400.0, -400.0); // Flip Y and Z axis to fit coordinate space
+	transform = transform_3d_translate(transform, 0, 300, 0);
+	model_transform = transform;
+
+	context->window_event_callback = &on_window_event;
+	context_activate_window(context);
+	render(context);
+	context_refresh_window(context);
 
     unload_model(model);
     destroy_context(context);
     return 0;
+}
+
+void on_window_event(struct graphics_context *context, SDL_Event event) {
+	static bool mouse1_down = false;
+	static bool mouse3_down = false;
+
+	switch (event.type) {
+	case SDL_WINDOWEVENT:
+		if (event.window.event == SDL_WINDOWEVENT_SHOWN) {
+			render(context);
+			context_refresh_window(context);
+		}
+		break;
+	case SDL_MOUSEBUTTONDOWN:
+		if (event.button.button == 1)
+			mouse1_down = true;
+		else if (event.button.button == 3)
+			mouse3_down = true;
+		break;
+	case SDL_MOUSEBUTTONUP:
+		if (event.button.button == 1)
+			mouse1_down = false;
+		else if (event.button.button == 3)
+			mouse3_down = false;
+		break;
+	case SDL_MOUSEMOTION:
+		if (mouse1_down) {
+			model_transform = transform_3d_translate(model_transform, event.motion.xrel, event.motion.yrel, 0.0);
+			render(context);
+			context_refresh_window(context);
+		}
+		break;
+	case SDL_MOUSEWHEEL: {
+		float delta = event.wheel.y;
+		model_transform = transform_3d_scale(model_transform, delta, -delta, -delta);
+		render(context);
+		context_refresh_window(context);
+		break;
+	}
+	default:
+		break;
+	}
 }
 
 void render_model(struct model model,
@@ -43,22 +95,13 @@ void render_model(struct model model,
 				  struct texture *texture,
 				  rgb_color *wireframe_color);
 
-void draw_context(struct graphics_context *context) {
+void render(struct graphics_context *context) {
 	rgb_color clear_color = {0, 0, 0};
 	clear(context, clear_color);
 
 	// Center camera on 0.0 and a bit back
     transform_3d view = transform_3d_make_translation(context->width / 2.0, context->height / 2.0, 100.0);
     float perspective = 0.0005;
-
-    transform_3d flip_yz = transform_3d_identity;
-    flip_yz.sy = -1.0;
-    flip_yz.sz = -1.0;
-    transform_3d scale = transform_3d_make_scale(400.0, 400.0, 400.0);
-	static float counter = 0.0;
-	counter += 0.1;
-    transform_3d translate = transform_3d_make_translation(sinf(counter) * 100, 300.0, 1.0);
-    transform_3d scale_and_translate = transform_3d_concat(scale, translate);
 
 	rgb_color ambient_light = {0, 0, 0};
 	struct directional_light light_1 = {.intensity = {200, 200, 200}, .direction = {0.0, 0.0, 1.0}};
@@ -67,7 +110,7 @@ void draw_context(struct graphics_context *context) {
 	struct directional_light lights[] = {light_1, light_2, light_3};
 
 	struct render_options options = {
-		.model = transform_3d_concat(flip_yz, scale_and_translate),
+		.model = model_transform,
 		.view = view,
 		.perspective = perspective,
 		.ambient_light = ambient_light,

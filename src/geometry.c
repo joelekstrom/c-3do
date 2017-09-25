@@ -98,3 +98,17 @@ vec3 transform_3d_apply(vec3 v, transform_3d t) {
     };
 	return result;
 }
+
+transform_3d transform_3d_translate(transform_3d t, float tx, float ty, float tz) {
+	t.tx += tx;
+	t.ty += ty;
+	t.tz += tz;
+	return t;
+}
+
+transform_3d transform_3d_scale(transform_3d t, float sx, float sy, float sz) {
+	t.sx += sx;
+	t.sy += sy;
+	t.sz += sz;
+	return t;
+}

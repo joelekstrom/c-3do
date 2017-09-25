@@ -6,40 +6,25 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdbool.h>
-#include <SDL2/SDL.h>
 
 #define Z_BUFFER_NONE UINT_MAX
 
 rgb_color texture_sample(struct texture t, vec2 coordinate);
 
-struct graphics_context *create_context(context_type type, int width, int height, void (*render_callback)(struct graphics_context *context)) {
+struct graphics_context *create_context(int width, int height) {
 	struct graphics_context *context = (struct graphics_context *)malloc(sizeof(struct graphics_context));
 	context->depth_buffer = (float *)malloc(sizeof(float) * width * height);
 	context->pixel_buffer = (uint32_t *)malloc(sizeof(uint32_t) * width * height);
 	memset(context->depth_buffer, Z_BUFFER_NONE, sizeof(float) * width * height);
-	context->type = type;
 	context->width = width;
 	context->height = height;
-	context->render_callback = render_callback;
+	context->window_event_callback = NULL;
 	context->_internal = NULL;
-
-	if (type == WINDOW_CONTEXT_TYPE) {
-		if (SDL_Init(SDL_INIT_VIDEO) != 0){
-			printf("SDL_Init Error: %s\n", SDL_GetError());
-			SDL_Quit();
-		}
-
-		SDL_Window *window = SDL_CreateWindow("c3do", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL);
-		if (window == NULL) {
-			printf("Could not create window: %s\n", SDL_GetError());
-		}
-		context->_internal = window;
-	}
 	return context;
 }
 
 void destroy_context(struct graphics_context *context) {
-	if (context->type == WINDOW_CONTEXT_TYPE) {
+	if (context->_internal) {
 		SDL_DestroyWindow(context->_internal);
 	}
 	free(context->pixel_buffer);
@@ -56,31 +41,40 @@ SDL_Surface *create_surface_from_context(struct graphics_context *context) {
 									0xff000000, 0x00ff0000, 0x0000ff00, 0);
 }
 
-void context_activate(struct graphics_context *context) {
-	if (context->type == BMP_CONTEXT_TYPE) {
-		context->render_callback(context);
-		SDL_Surface *surface = create_surface_from_context(context);
-		SDL_SaveBMP(surface, "output.bmp");
-		SDL_FreeSurface(surface);
-	} else if (context->type == WINDOW_CONTEXT_TYPE) {
-		SDL_Event event;
-		while (SDL_WaitEvent(&event)) {
-			switch (event.type) {
-			case SDL_QUIT:
-				return;
-			case SDL_MOUSEBUTTONDOWN:
-			case SDL_MOUSEMOTION:
-				context->render_callback(context);
-				SDL_Surface *surface = create_surface_from_context(context);
-				SDL_BlitSurface(surface, NULL, SDL_GetWindowSurface(context->_internal), NULL);
-				SDL_UpdateWindowSurface(context->_internal);
-				SDL_FreeSurface(surface);
-				break;
-			default:
-				break;
-			}
+void context_activate_window(struct graphics_context *context) {
+	if (SDL_Init(SDL_INIT_VIDEO) != 0){
+		printf("SDL_Init Error: %s\n", SDL_GetError());
+		SDL_Quit();
+	}
+
+	SDL_Window *window = SDL_CreateWindow("c3do", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, context->width, context->height, SDL_WINDOW_OPENGL);
+	if (window == NULL) {
+		printf("Could not create window: %s\n", SDL_GetError());
+	}
+	context->_internal = window;
+
+	SDL_Event event;
+	while (SDL_WaitEvent(&event)) {
+		if (event.type == SDL_QUIT)
+			return;
+
+		if (context->window_event_callback) {
+			context->window_event_callback(context, event);
 		}
 	}
+}
+
+void context_refresh_window(struct graphics_context *context) {
+	SDL_Surface *surface = create_surface_from_context(context);
+	SDL_BlitSurface(surface, NULL, SDL_GetWindowSurface(context->_internal), NULL);
+	SDL_UpdateWindowSurface(context->_internal);
+	SDL_FreeSurface(surface);
+}
+
+void context_save_BMP(struct graphics_context *context, char file_name[]) {
+	SDL_Surface *surface = create_surface_from_context(context);
+	SDL_SaveBMP(surface, file_name);
+	SDL_FreeSurface(surface);
 }
 
 // ********** Z-buffering ***************
@@ -146,8 +140,6 @@ void clear(struct graphics_context *context, rgb_color color) {
 	}
 }
 
-// ********** Goraud triangle drawing **********
-
 struct vertex vertex_lerp(struct vertex a, struct vertex b, float value) {
 	struct vertex result;
 	result.coordinate = vec3_lerp(a.coordinate, b.coordinate, value);
@@ -166,16 +158,20 @@ void draw_point(struct vertex p, struct fragment_shader_input shader_input, rgb_
 int compare_vertices_x(const void *a, const void *b) {
 	struct vertex *p1 = (struct vertex *)a;
 	struct vertex *p2 = (struct vertex *)b;
-	if (p1->coordinate.x < p2->coordinate.x) return -1;
-	if (p1->coordinate.x > p2->coordinate.x) return 1;
+	float x1 = roundf(p1->coordinate.x);
+	float x2 = roundf(p2->coordinate.x);
+	if (x1 < x2) return -1;
+	if (x1 > x2) return 1;
 	return 0;
 }
 
 int compare_vertices_y(const void *a, const void *b) {
 	struct vertex *p1 = (struct vertex *)a;
 	struct vertex *p2 = (struct vertex *)b;
-	if (p1->coordinate.y < p2->coordinate.y) return -1;
-	if (p1->coordinate.y > p2->coordinate.y) return 1;
+	float y1 = roundf(p1->coordinate.y);
+	float y2 = roundf(p2->coordinate.y);
+	if (y1 < y2) return -1;
+	if (y1 > y2) return 1;
 	return 0;
 }
 
