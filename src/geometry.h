@@ -12,11 +12,14 @@ typedef struct vec3 {
 	float z;
 } vec3;
 
-typedef struct transform_3d {
-	float sx, ax, bx, tx;
-	float ay, sy, by, ty;
-	float az, bz, sz, tz;
-	float am, bm, cm, dm;
+typedef union transform_3d {
+	struct {
+		float sx, ax, bx, tx;
+		float ay, sy, by, ty;
+		float az, bz, sz, tz;
+		float am, bm, cm, dm;
+	};
+	float values[4][4];
 } transform_3d;
 
 float dot_product_2d(vec2 v1, vec2 v2);
@@ -37,11 +40,15 @@ vec3 vec3_lerp(vec3 a, vec3 b, float value);
 extern const transform_3d transform_3d_identity;
 transform_3d transform_3d_make_translation(float tx, float ty, float sz);
 transform_3d transform_3d_make_scale(float sx, float sy, float sz);
-transform_3d transform_3d_make_rotation(float rx, float ry, float rz);
-transform_3d transform_3d_concat(transform_3d t1, transform_3d t2);
+transform_3d transform_3d_make_rotation_x(float angle);
+transform_3d transform_3d_make_rotation_y(float angle);
+transform_3d transform_3d_make_rotation_z(float angle);
+transform_3d transform_3d_multiply(transform_3d t1, transform_3d t2);
 vec3 transform_3d_apply(vec3 v, transform_3d t);
 
 transform_3d transform_3d_translate(transform_3d t, float tx, float ty, float sz);
 transform_3d transform_3d_scale(transform_3d t, float sx, float sy, float sz);
+transform_3d transform_3d_rotate_y_around_origin(transform_3d t, float angle);
+transform_3d transform_3d_rotate_x_around_origin(transform_3d t, float angle);
 
 #endif

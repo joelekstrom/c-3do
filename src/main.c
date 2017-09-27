@@ -32,6 +32,7 @@ int main() {
 
 	transform_3d transform = transform_3d_identity;
 	transform = transform_3d_scale(transform, 400.0, -400.0, -400.0); // Flip Y and Z axis to fit coordinate space
+	transform = transform_3d_multiply(transform, transform_3d_make_rotation_y(0.3));
 	transform = transform_3d_translate(transform, 0, 300, 0);
 	model_transform = transform;
 
@@ -73,6 +74,11 @@ void on_window_event(struct graphics_context *context, SDL_Event event) {
 			model_transform = transform_3d_translate(model_transform, event.motion.xrel, event.motion.yrel, 0.0);
 			render(context);
 			context_refresh_window(context);
+		} else if (mouse3_down) {
+			model_transform = transform_3d_rotate_y_around_origin(model_transform, event.motion.xrel * -0.02);
+			model_transform = transform_3d_rotate_x_around_origin(model_transform, event.motion.yrel * 0.02);
+			render(context);
+			context_refresh_window(context);
 		}
 		break;
 	case SDL_MOUSEWHEEL: {
@@ -105,8 +111,8 @@ void render(struct graphics_context *context) {
 
 	rgb_color ambient_light = {0, 0, 0};
 	struct directional_light light_1 = {.intensity = {200, 200, 200}, .direction = {0.0, 0.0, 1.0}};
-	struct directional_light light_2 = {.intensity = {0, 0, 30}, .direction = {1.0, 0.0, 0.0}};
-	struct directional_light light_3 = {.intensity = {0, 50, 0}, .direction = {0.0, 1.0, 0.0}};
+	struct directional_light light_2 = {.intensity = {0, 0, 0}, .direction = {1.0, 0.0, 0.0}};
+	struct directional_light light_3 = {.intensity = {100, 140, 100}, .direction = {0.0, 1.0, 0.0}};
 	struct directional_light lights[] = {light_1, light_2, light_3};
 
 	struct render_options options = {

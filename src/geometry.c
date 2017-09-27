@@ -81,12 +81,38 @@ transform_3d transform_3d_make_scale(float sx, float sy, float sz) {
 	return t;
 }
 
-transform_3d transform_3d_concat(transform_3d t1, transform_3d t2) {
+transform_3d transform_3d_make_rotation_x(float angle) {
+	transform_3d t = transform_3d_identity;
+	t.sy = cosf(angle); t.by = -sinf(angle);
+	t.bz = sinf(angle); t.sz = cosf(angle);
+	return t;
+}
+
+transform_3d transform_3d_make_rotation_y(float angle) {
+	transform_3d t = transform_3d_identity;
+	t.sx = cosf(angle);  t.bx = sinf(angle);
+	t.az = -sinf(angle); t.sz = cosf(angle);
+	return t;
+}
+
+transform_3d transform_3d_make_rotation_z(float angle) {
+	transform_3d t = transform_3d_identity;
+	t.sx = cosf(angle);  t.ax = sinf(angle);
+	t.ay = -sinf(angle); t.sy = cosf(angle);
+	return t;
+}
+
+transform_3d transform_3d_multiply(transform_3d t1, transform_3d t2) {
 	transform_3d t;
-	t.sx = t1.sx * t2.sx, t.ax = 0, t.bx = 0, t.tx = t1.tx + t2.tx;
-	t.ay = 0, t.sy = t1.sy * t2.sy, t.by = 0, t.ty = t1.ty + t2.ty;
-	t.az = 0, t.bz = 0, t.sz = t1.sz * t2.sz, t.tz = t1.tz + t2.tz;
-	t.am = 0, t.bm = 0, t.cm = 0, t.dm = t1.dm * t2.dm;
+	for (int y = 0; y < 4; y++) {
+		for (int x = 0; x < 4; x++) {
+			float value = 0.0;
+			for (int i = 0; i < 4; i++) {
+				value += t1.values[i][y] * t2.values[x][i];
+			}
+			t.values[x][y] = value;
+		}
+	}
 	return t;
 }
 
@@ -110,5 +136,27 @@ transform_3d transform_3d_scale(transform_3d t, float sx, float sy, float sz) {
 	t.sx *= sx;
 	t.sy *= sy;
 	t.sz *= sz;
+	return t;
+}
+
+transform_3d transform_3d_rotate_y_around_origin(transform_3d t, float angle) {
+	// Remove translation so we can rotate around origin, then we add it back
+	float tx = t.tx;
+	float ty = t.ty;
+	float tz = t.tz;
+	t = transform_3d_translate(t, -tx, -ty, -tz);
+	t = transform_3d_multiply(t, transform_3d_make_rotation_y(angle));
+	t = transform_3d_translate(t, tx, ty, tz);
+	return t;
+}
+
+transform_3d transform_3d_rotate_x_around_origin(transform_3d t, float angle) {
+	// Remove translation so we can rotate around origin, then we add it back
+	float tx = t.tx;
+	float ty = t.ty;
+	float tz = t.tz;
+	t = transform_3d_translate(t, -tx, -ty, -tz);
+	t = transform_3d_multiply(t, transform_3d_make_rotation_x(angle));
+	t = transform_3d_translate(t, tx, ty, tz);
 	return t;
 }

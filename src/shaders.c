@@ -5,7 +5,7 @@
  Applies model and view transforms to a vectors coordinate and normal vector
  */
 void apply_transforms(struct vertex *v, transform_3d model, transform_3d view) {
-	transform_3d transform = transform_3d_concat(model, view);
+	transform_3d transform = transform_3d_multiply(model, view);
 	v->coordinate = transform_3d_apply(v->coordinate, transform);
 
 	// Remove translations from the matrix so we only apply scale + rotation to
