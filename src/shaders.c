@@ -37,21 +37,21 @@ struct vertex goraud_shader(struct vertex_shader_input input) {
 	struct vertex v = input.vertex;
 
 	// Apply all transforms. Rotation, scaling, translation etc
-	apply_transforms(&v, input.options.model, input.options.view);
+	apply_transforms(&v, input.model, input.view);
 
 	// Apply perspective (move x and y further to/away from the middle
 	// depending on the Z value, to give the illusion of depth)
-	v.coordinate = apply_perspective(v.coordinate, input.options.view, input.options.perspective);
+	v.coordinate = apply_perspective(v.coordinate, input.view, input.perspective);
 
 	// Start by setting the color to the ambient light
-	v.color = input.options.ambient_light;
+	v.color = input.ambient_light;
 		
 	// Calculate light intensity by checking the angle of the vertex normal
 	// to the angle of the light direction. If vertex is directly facing the
 	// light direction, it will be fully illuminated, and if it's >= 90 degrees
 	// it will be totally black
-	for (int i = 0; i < input.options.directional_light_count; i++) {
-		struct directional_light *light = &input.options.directional_lights[i];
+	for (int i = 0; i < input.directional_light_count; i++) {
+		struct directional_light *light = &input.directional_lights[i];
 		float dot_product = dot_product_3d(v.normal, vec3_unit(light->direction));
 		if (dot_product > 0.0) {
 			rgb_color light_color = scale_color(light->intensity, dot_product);
@@ -66,11 +66,11 @@ struct vertex goraud_shader(struct vertex_shader_input input) {
  */
 struct vertex flat_shader(struct vertex_shader_input input) {
 	struct vertex v = input.vertex;
-	apply_transforms(&v, input.options.model, input.options.view);
-	v.coordinate = apply_perspective(v.coordinate, input.options.view, input.options.perspective);
-	v.color = input.options.ambient_light;
-	for (int i = 0; i < input.options.directional_light_count; i++) {
-		struct directional_light *light = &input.options.directional_lights[i];
+	apply_transforms(&v, input.model, input.view);
+	v.coordinate = apply_perspective(v.coordinate, input.view, input.perspective);
+	v.color = input.ambient_light;
+	for (int i = 0; i < input.directional_light_count; i++) {
+		struct directional_light *light = &input.directional_lights[i];
 		float dot_product = dot_product_3d(input.face_normal, vec3_unit(light->direction));
 		if (dot_product > 0.0) {
 			rgb_color light_color = scale_color(light->intensity, dot_product);

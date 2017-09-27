@@ -10,12 +10,17 @@
 #include <math.h>
 #include <stdbool.h>
 
-void render(struct graphics_context *context);
+void render_scene(struct graphics_context *context);
 void on_window_event(struct graphics_context *context, SDL_Event event);
 
-struct model model;
-struct texture texture;
-transform_3d model_transform;
+struct object {
+	struct model *model;
+	struct texture *texture;
+	struct texture *normal_map;
+	transform_3d transform;
+};
+
+struct object object;
 
 int main() {
     struct graphics_context *context = create_context(800, 800);
@@ -26,19 +31,23 @@ int main() {
 		return 1;
     }
 
-    model = load_model(fp);
+	struct model model = load_model(fp);
+	object.model = &model;
 	fclose(fp);
-	texture = load_texture("model/head_vcols.bmp");
 
-	transform_3d transform = transform_3d_identity;
-	transform = transform_3d_scale(transform, 400.0, -400.0, -400.0); // Flip Y and Z axis to fit coordinate space
-	transform = transform_3d_multiply(transform, transform_3d_make_rotation_y(0.3));
-	transform = transform_3d_translate(transform, 0, 300, 0);
-	model_transform = transform;
+	struct texture texture = load_texture("model/head_vcols.bmp");
+	struct texture normal_map = load_texture("model/head_normals.bmp");
+	object.texture = &texture;
+	object.normal_map = &normal_map;
+
+	object.transform = transform_3d_identity;
+	object.transform = transform_3d_scale(object.transform, 400.0, -400.0, -400.0); // Flip Y and Z axis to fit coordinate space
+	object.transform = transform_3d_multiply(object.transform, transform_3d_make_rotation_y(0.3));
+	object.transform = transform_3d_translate(object.transform, 0, 300, 0);
 
 	context->window_event_callback = &on_window_event;
 	context_activate_window(context);
-	render(context);
+	render_scene(context);
 	context_refresh_window(context);
 
     unload_model(model);
@@ -53,7 +62,7 @@ void on_window_event(struct graphics_context *context, SDL_Event event) {
 	switch (event.type) {
 	case SDL_WINDOWEVENT:
 		if (event.window.event == SDL_WINDOWEVENT_SHOWN) {
-			render(context);
+			render_scene(context);
 			context_refresh_window(context);
 		}
 		break;
@@ -71,20 +80,20 @@ void on_window_event(struct graphics_context *context, SDL_Event event) {
 		break;
 	case SDL_MOUSEMOTION:
 		if (mouse1_down) {
-			model_transform = transform_3d_translate(model_transform, event.motion.xrel, event.motion.yrel, 0.0);
-			render(context);
+			object.transform = transform_3d_translate(object.transform, event.motion.xrel, event.motion.yrel, 0.0);
+			render_scene(context);
 			context_refresh_window(context);
 		} else if (mouse3_down) {
-			model_transform = transform_3d_rotate_y_around_origin(model_transform, event.motion.xrel * -0.02);
-			model_transform = transform_3d_rotate_x_around_origin(model_transform, event.motion.yrel * 0.02);
-			render(context);
+			object.transform = transform_3d_rotate_y_around_origin(object.transform, event.motion.xrel * -0.02);
+			object.transform = transform_3d_rotate_x_around_origin(object.transform, event.motion.yrel * 0.02);
+			render_scene(context);
 			context_refresh_window(context);
 		}
 		break;
 	case SDL_MOUSEWHEEL: {
 		float delta = 1.0 - (event.wheel.y * 0.01);
-		model_transform = transform_3d_scale(model_transform, delta, delta, delta);
-		render(context);
+		object.transform = transform_3d_scale(object.transform, delta, delta, delta);
+		render_scene(context);
 		context_refresh_window(context);
 		break;
 	}
@@ -93,15 +102,14 @@ void on_window_event(struct graphics_context *context, SDL_Event event) {
 	}
 }
 
-void render_model(struct model model,
-				  struct render_options options,
-				  struct vertex (*vertex_shader)(struct vertex_shader_input),
-				  rgb_color (*fragment_shader)(struct fragment_shader_input),
-				  struct graphics_context *context,
-				  struct texture *texture,
-				  rgb_color *wireframe_color);
+void render_object(struct object object,
+				   struct vertex_shader_input vertex_shader_input,
+				   struct vertex (*vertex_shader)(struct vertex_shader_input),
+				   rgb_color (*fragment_shader)(struct fragment_shader_input),
+				   struct graphics_context *context,
+				   rgb_color *wireframe_color);
 
-void render(struct graphics_context *context) {
+void render_scene(struct graphics_context *context) {
 	rgb_color clear_color = {0, 0, 0};
 	clear(context, clear_color);
 
@@ -115,8 +123,8 @@ void render(struct graphics_context *context) {
 	struct directional_light light_3 = {.intensity = {100, 140, 100}, .direction = {0.0, 1.0, 0.0}};
 	struct directional_light lights[] = {light_1, light_2, light_3};
 
-	struct render_options options = {
-		.model = model_transform,
+	struct vertex_shader_input shader_input = {
+		.model = object.transform,
 		.view = view,
 		.perspective = perspective,
 		.ambient_light = ambient_light,
@@ -124,25 +132,23 @@ void render(struct graphics_context *context) {
 		.directional_light_count = 3
 	};
 
-    render_model(model,
-				 options,
-				 &goraud_shader,
-				 &apply_texture_shader,
-				 context,
-				 &texture,
-				 NULL);
+    render_object(object,
+				  shader_input,
+				  &goraud_shader,
+				  &apply_texture_shader,
+				  context,
+				  NULL);
 }
 
-void render_model(struct model model,
-				  struct render_options options,
-				  struct vertex (*vertex_shader)(struct vertex_shader_input),
-				  rgb_color (*fragment_shader)(struct fragment_shader_input),
-				  struct graphics_context *context,
-				  struct texture *texture,
-				  rgb_color *wireframe_color)
+void render_object(struct object object,
+				   struct vertex_shader_input vertex_shader_input,
+				   struct vertex (*vertex_shader)(struct vertex_shader_input),
+				   rgb_color (*fragment_shader)(struct fragment_shader_input),
+				   struct graphics_context *context,
+				   rgb_color *wireframe_color)
 {
-    for (int i = 0; i < model.num_faces; i++) {
-		struct face f = model.faces[i];
+    for (int i = 0; i < object.model->num_faces; i++) {
+		struct face f = object.model->faces[i];
 
 		// Calculate the face normal which is used for back-face culling and flat shading
 		vec3 v = vec3_subtract(*f.vertices[1], *f.vertices[0]);
@@ -156,10 +162,9 @@ void render_model(struct model model,
 									.texture_coordinate = *f.textures[v],
 									.normal = *f.normals[v]};
 
-			struct vertex_shader_input shader_input = {.vertex = vertex,
-													   .face_normal = face_normal,
-													   .options = options};
-
+			struct vertex_shader_input shader_input = vertex_shader_input;
+			shader_input.vertex = vertex;
+			shader_input.face_normal = face_normal;
 			vertices[v] = vertex_shader(shader_input);
 		}
 
@@ -175,7 +180,7 @@ void render_model(struct model model,
         }
 
 		struct fragment_shader_input input;
-		input.texture = texture;
+		input.texture = object.texture;
 		
 		triangle(vertices, input, fragment_shader, context);
 

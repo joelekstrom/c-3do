@@ -16,19 +16,15 @@ struct directional_light {
 	rgb_color intensity;
 };
 
-struct render_options {
+struct vertex_shader_input {
+	struct vertex vertex;
+	vec3 face_normal;
 	transform_3d model;
 	transform_3d view;
 	float perspective;
 	rgb_color ambient_light;
 	struct directional_light *directional_lights;
 	int directional_light_count;
-};
-
-struct vertex_shader_input {
-	struct vertex vertex;
-	vec3 face_normal;
-	struct render_options options;
 };
 
 struct fragment_shader_input {
