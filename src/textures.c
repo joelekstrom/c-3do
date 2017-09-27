@@ -19,6 +19,10 @@ struct texture load_texture(char *file_name) {
 	return texture;
 }
 
+void unload_texture(struct texture t) {
+	free(t._internal);
+}
+
 rgb_color texture_sample(struct texture t, vec2 coordinate) {
 	int x = (int)(coordinate.x * t.width);
 	int y = (int)((1.0 - coordinate.y) * t.height);

@@ -11,6 +11,7 @@ struct texture {
 };
 
 struct texture load_texture(char *file_name);
+void unload_texture(struct texture t);
 rgb_color texture_sample(struct texture t, vec2 coordinate);
 
 #endif
