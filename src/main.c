@@ -151,7 +151,6 @@ void render_model(struct model model,
 		
 		// Create vertex objects that are used by shaders/drawing code
 		struct vertex vertices[3];
-		bool any_vertex_inside_view = false;
 		for (int v = 0; v < 3; v++) {
 			struct vertex vertex = {.coordinate = *f.vertices[v],
 									.texture_coordinate = *f.textures[v],
@@ -160,15 +159,8 @@ void render_model(struct model model,
 			struct vertex_shader_input shader_input = {.vertex = vertex,
 													   .face_normal = face_normal,
 													   .options = options};
-			vertex = vertex_shader(shader_input);
-			vertices[v] = vertex;
-			if (!(vertex.coordinate.x < 0 || vertex.coordinate.x > context->width || vertex.coordinate.y < 0 || vertex.coordinate.y > context->height))
-				any_vertex_inside_view = true;
-		}
 
-		// If this triangle is outside view, skip drawing as an optimization
-		if (!any_vertex_inside_view) {
-			continue;
+			vertices[v] = vertex_shader(shader_input);
 		}
 
 		// Get the new face normal and drop triangles that are "back facing",

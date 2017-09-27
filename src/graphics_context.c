@@ -183,6 +183,18 @@ int compare_vertices(const void *a, const void *b) {
 }
 
 /**
+ Calculates a rectangular bounding box for a triangle, and
+ returns true if the triangle is visible within context bounds.
+ */
+bool triangle_intersects_bounds(struct vertex vertices[3], struct graphics_context *context) {
+	float top = fminf(fminf(vertices[0].coordinate.y, vertices[1].coordinate.y), vertices[2].coordinate.y);
+	float left = fminf(fminf(vertices[0].coordinate.x, vertices[1].coordinate.x), vertices[2].coordinate.x);
+	float bottom = fmaxf(fmaxf(vertices[0].coordinate.y, vertices[1].coordinate.y), vertices[2].coordinate.y);
+	float right = fmaxf(fmaxf(vertices[0].coordinate.x, vertices[1].coordinate.x), vertices[2].coordinate.x);
+	return !(right < 0 || bottom < 0 || left > context->width || top > context->height);
+}
+
+/**
  Fills a "flat triangle". Points/colors need to be sorted before, and
  left_leg and right_leg must have the same y-value.
  */
@@ -224,7 +236,12 @@ void triangle(struct vertex vertices[3],
 			  struct fragment_shader_input shader_input,
 			  rgb_color (*fragment_shader)(struct fragment_shader_input),
 			  struct graphics_context *context)
-{	
+{
+	// Ignore triangle if it won't be visible
+	if (!triangle_intersects_bounds(vertices, context)) {
+		return;
+	}
+
 	// Sort points top->left->right
 	qsort(vertices, 3, sizeof(struct vertex), &compare_vertices);
 
