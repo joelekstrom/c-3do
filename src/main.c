@@ -107,7 +107,7 @@ void render_object(struct object object,
 		u = vec3_subtract(vertices[2].coordinate, vertices[0].coordinate);
 		vec3 new_face_normal = vec3_scale(vec3_unit(cross_product(u, v)), 1.0);
 		vec3 camera_direction = {0.0, 0.0, 1.0}; // Camera is always pointing "forward" after all transformations
-		float angle = dot_product_3d(new_face_normal, camera_direction);
+		double angle = dot_product_3d(new_face_normal, camera_direction);
 		if (angle < 0.0) {
 			continue; // Back-face culling
         }
@@ -171,7 +171,7 @@ void on_window_event(struct graphics_context *context, SDL_Event event) {
 		}
 		break;
 	case SDL_MOUSEWHEEL: {
-		float delta = 1.0 - (event.wheel.y * 0.01);
+		double delta = 1.0 - (event.wheel.y * 0.01);
 		object.transform = transform_3d_scale(object.transform, delta, delta, delta);
 		render(context);
 		break;

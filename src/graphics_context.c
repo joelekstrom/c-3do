@@ -78,19 +78,19 @@ void context_save_BMP(struct graphics_context *context, char file_name[]) {
 }
 
 // ********** Z-buffering ***************
-float depth_buffer_get(int x, int y, struct graphics_context *context) {
+double depth_buffer_get(int x, int y, struct graphics_context *context) {
 	return context->depth_buffer[context->width * x + y];
 }
 
-void depth_buffer_set(int x, int y, float value, struct graphics_context *context) {
+void depth_buffer_set(int x, int y, double value, struct graphics_context *context) {
 	context->depth_buffer[context->width * x + y] = value;
 }
 
 // ********** Drawing functions **********
 
 void draw_fragment(vec3 coordinate, rgb_color color, struct graphics_context *context) {
-	int x = (int)roundf(coordinate.x);
-	int y = (int)roundf(coordinate.y);
+	int x = (int)round(coordinate.x);
+	int y = (int)round(coordinate.y);
 
 	// Discard fragments outside buffer bounds
 	if (x < 0 || x >= context->width || y < 0 || y >= context->height) {
@@ -99,7 +99,7 @@ void draw_fragment(vec3 coordinate, rgb_color color, struct graphics_context *co
 			
 	// Depth check (use the z-value for z-buffering)
 	if (context->depth_buffer) {
-		float current_depth = depth_buffer_get(x, y, context);
+		double current_depth = depth_buffer_get(x, y, context);
 		if (current_depth != Z_BUFFER_NONE && coordinate.z > current_depth)
 			return;
 		depth_buffer_set(x, y, coordinate.z, context);
@@ -108,8 +108,8 @@ void draw_fragment(vec3 coordinate, rgb_color color, struct graphics_context *co
 	context->pixel_buffer[context->width * y + x] = rgba_from_color(color);
 }
 
-void swapf(float *a, float *b) {
-	float tmp = *a;
+void swapf(double *a, double *b) {
+	double tmp = *a;
 	*a = *b;
 	*b = tmp;
 }
@@ -118,12 +118,12 @@ void swapf(float *a, float *b) {
  Draws a 2D line between two points, ignoring Z-value
  */
 void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color color) {
-	float line_width = fabsf(p2.x - p1.x);
-	float line_height = fabsf(p2.y - p1.y);
-	float length = (line_width > line_height) ? line_width : line_height;
+	double line_width = fabs(p2.x - p1.x);
+	double line_height = fabs(p2.y - p1.y);
+	double length = (line_width > line_height) ? line_width : line_height;
 	
-    for (int i = 0; i < roundf(length); i++) {
-		float t = (float)i / length;
+    for (int i = 0; i < round(length); i++) {
+		double t = (double)i / length;
 		vec2 p = vec2_lerp(p1, p2, t);
 
 		struct vec3 coordinate = {.x = p.x, .y = p.y, .z = -9000.0};
@@ -133,14 +133,14 @@ void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color col
 
 void clear(struct graphics_context *context, rgb_color color) {
 	// Clear Z-buffer
-	memset(context->depth_buffer, Z_BUFFER_NONE, sizeof(float) * context->width * context->height);
+	memset(context->depth_buffer, Z_BUFFER_NONE, sizeof(double) * context->width * context->height);
 	uint32_t rgba = rgba_from_color(color);
 	for (int i = 0; i < context->width * context->height; i++) {
 		context->pixel_buffer[i] = rgba;
 	}
 }
 
-struct vertex vertex_lerp(struct vertex a, struct vertex b, float value) {
+struct vertex vertex_lerp(struct vertex a, struct vertex b, double value) {
 	struct vertex result;
 	result.coordinate = vec3_lerp(a.coordinate, b.coordinate, value);
 	result.color = interpolate_color(a.color, b.color, value);
@@ -158,8 +158,8 @@ void draw_point(struct vertex p, struct fragment_shader_input shader_input, rgb_
 int compare_vertices_x(const void *a, const void *b) {
 	struct vertex *p1 = (struct vertex *)a;
 	struct vertex *p2 = (struct vertex *)b;
-	float x1 = roundf(p1->coordinate.x);
-	float x2 = roundf(p2->coordinate.x);
+	double x1 = round(p1->coordinate.x);
+	double x2 = round(p2->coordinate.x);
 	if (x1 < x2) return -1;
 	if (x1 > x2) return 1;
 	return 0;
@@ -168,8 +168,8 @@ int compare_vertices_x(const void *a, const void *b) {
 int compare_vertices_y(const void *a, const void *b) {
 	struct vertex *p1 = (struct vertex *)a;
 	struct vertex *p2 = (struct vertex *)b;
-	float y1 = roundf(p1->coordinate.y);
-	float y2 = roundf(p2->coordinate.y);
+	double y1 = round(p1->coordinate.y);
+	double y2 = round(p2->coordinate.y);
 	if (y1 < y2) return -1;
 	if (y1 > y2) return 1;
 	return 0;
@@ -187,10 +187,10 @@ int compare_vertices(const void *a, const void *b) {
  returns true if the triangle is visible within context bounds.
  */
 bool triangle_intersects_bounds(struct vertex vertices[3], struct graphics_context *context) {
-	float top = fminf(fminf(vertices[0].coordinate.y, vertices[1].coordinate.y), vertices[2].coordinate.y);
-	float left = fminf(fminf(vertices[0].coordinate.x, vertices[1].coordinate.x), vertices[2].coordinate.x);
-	float bottom = fmaxf(fmaxf(vertices[0].coordinate.y, vertices[1].coordinate.y), vertices[2].coordinate.y);
-	float right = fmaxf(fmaxf(vertices[0].coordinate.x, vertices[1].coordinate.x), vertices[2].coordinate.x);
+	double top = fminf(fminf(vertices[0].coordinate.y, vertices[1].coordinate.y), vertices[2].coordinate.y);
+	double left = fminf(fminf(vertices[0].coordinate.x, vertices[1].coordinate.x), vertices[2].coordinate.x);
+	double bottom = fmaxf(fmaxf(vertices[0].coordinate.y, vertices[1].coordinate.y), vertices[2].coordinate.y);
+	double right = fmaxf(fmaxf(vertices[0].coordinate.x, vertices[1].coordinate.x), vertices[2].coordinate.x);
 	return !(right < 0 || bottom < 0 || left > context->width || top > context->height);
 }
 
@@ -205,22 +205,22 @@ void flat_triangle(struct vertex anchor,
 				   rgb_color (*fragment_shader)(struct fragment_shader_input),
 				   struct graphics_context *context)
 {
-	int height = abs((int)roundf(anchor.coordinate.y) - (int)roundf(left_leg.coordinate.y));
+	int height = abs((int)round(anchor.coordinate.y) - (int)round(left_leg.coordinate.y));
 	draw_point(anchor, shader_input, fragment_shader, context);
 
 	for (int y = 1; y <= height; y++) {
-		float t = (float)y / (float)height;
+		double t = (double)y / (double)height;
 
 		// Calculate left and right points
 		struct vertex left_point = vertex_lerp(anchor, left_leg, t);
 		struct vertex right_point = vertex_lerp(anchor, right_leg, t);
-		int width = roundf(right_point.coordinate.x) - roundf(left_point.coordinate.x);
+		int width = round(right_point.coordinate.x) - round(left_point.coordinate.x);
 		if (width == 0) {
 			continue;
 		}
 
 		for (int x = 0; x <= width; x++) {
-			float tx = (float)x / (float)width;
+			double tx = (double)x / (double)width;
 			struct vertex point_to_draw = vertex_lerp(left_point, right_point, tx);
 			draw_point(point_to_draw, shader_input, fragment_shader, context);
 		}
@@ -262,7 +262,7 @@ void triangle(struct vertex vertices[3],
 		struct vertex other_vertices[] = {vertices[0], vertices[2]};
 		
 		// Interpolate between the 'other' vertices to create a new point
-		float t = (split_point.coordinate.y - other_vertices[0].coordinate.y) / (other_vertices[1].coordinate.y - other_vertices[0].coordinate.y);
+		double t = (split_point.coordinate.y - other_vertices[0].coordinate.y) / (other_vertices[1].coordinate.y - other_vertices[0].coordinate.y);
 		struct vertex new_point = vertex_lerp(other_vertices[0], other_vertices[1], t);
 		
 		// Call this function twice for two new, splitted triangles

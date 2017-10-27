@@ -20,13 +20,13 @@ void apply_transforms(struct vertex *v, transform_3d model, transform_3d view) {
 /**
  Applies perspective to simulate vector positions in 3D-space, relative to a view position
 */
-vec3 apply_perspective(vec3 position, transform_3d view, float amount) {
+vec3 apply_perspective(vec3 position, transform_3d view, double amount) {
 	// Convert view matrix to a vector to simplify calculations
 	vec3 view_point = {0, 0, 0};
 	view_point = transform_3d_apply(view_point, view);
 	
-    float distance_x = view_point.x - position.x;
-    float distance_y = view_point.y - position.y;
+    double distance_x = view_point.x - position.x;
+    double distance_y = view_point.y - position.y;
     vec3 result = position;
     result.x = position.x + position.z * distance_x * amount;
     result.y = position.y + position.z * distance_y * amount;
@@ -52,7 +52,7 @@ vertex_shader goraud_shader(struct vertex_shader_input input) {
 	// it will be totally black
 	for (int i = 0; i < input.scene.directional_light_count; i++) {
 		struct directional_light *light = &input.scene.directional_lights[i];
-		float dot_product = dot_product_3d(v.normal, vec3_unit(light->direction));
+		double dot_product = dot_product_3d(v.normal, vec3_unit(light->direction));
 		if (dot_product > 0.0) {
 			rgb_color light_color = scale_color(light->intensity, dot_product);
 			v.color = add_color(v.color, light_color);
@@ -71,7 +71,7 @@ vertex_shader flat_shader(struct vertex_shader_input input) {
 	v.color = input.scene.ambient_light;
 	for (int i = 0; i < input.scene.directional_light_count; i++) {
 		struct directional_light *light = &input.scene.directional_lights[i];
-		float dot_product = dot_product_3d(input.face_normal, vec3_unit(light->direction));
+		double dot_product = dot_product_3d(input.face_normal, vec3_unit(light->direction));
 		if (dot_product > 0.0) {
 			rgb_color light_color = scale_color(light->intensity, dot_product);
 			v.color = add_color(v.color, light_color);

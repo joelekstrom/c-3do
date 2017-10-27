@@ -4,13 +4,13 @@
 
 vec3 parse_vertex_3f(FILE *fp) {
 	vec3 vertex;
-	fscanf(fp, "%f %f %f", &vertex.x, &vertex.y, &vertex.z);
+	fscanf(fp, "%lg %lg %lg", &vertex.x, &vertex.y, &vertex.z);
 	return vertex;
 }
 
 vec2 parse_vertex_2f(FILE *fp) {
 	vec2 vertex;
-	fscanf(fp, "%f %f", &vertex.x, &vertex.y);
+	fscanf(fp, "%lg %lg", &vertex.x, &vertex.y);
 	return vertex;
 }
 
@@ -127,12 +127,12 @@ void inspect_model(struct model model) {
 		printf("\n\nFace %i of %i: {\n", i + 1, model.num_faces);
 		puts("\tvertices: {");
 		for (int v = 0; v < 3; v++)
-			printf("\t\t(%f, %f, %f)\n", face.vertices[v]->x, face.vertices[v]->y, face.vertices[v]->z);
+			printf("\t\t(%g, %g, %g)\n", face.vertices[v]->x, face.vertices[v]->y, face.vertices[v]->z);
 		puts("\t}\n");
 
 		puts("\ttexture coordinates: {");
 		for (int v = 0; v < 3; v++)
-			printf("\t\t(%f, %f)\n", face.textures[v]->x, face.textures[v]->y);
+			printf("\t\t(%g, %g)\n", face.textures[v]->x, face.textures[v]->y);
 		puts("\t}\n}");
 	}
 }
