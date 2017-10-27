@@ -1,10 +1,16 @@
 #include "textures.h"
 #include <SDL2/SDL.h>
+#include <stdio.h>
 
 struct texture load_texture(char *file_name) {
 	struct texture texture;
 
 	SDL_Surface *surface = SDL_LoadBMP(file_name);
+	if (!surface) {
+		fprintf(stderr, "Failed to load texture: %s", file_name);
+		abort();
+    }
+
 	SDL_Surface *better_surface = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA8888, 0);
 	SDL_FreeSurface(surface);
 

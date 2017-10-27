@@ -11,6 +11,8 @@
 #include <math.h>
 #include <stdbool.h>
 
+typedef char * string;
+
 struct object {
 	struct model model;
 	struct texture texture;
@@ -29,7 +31,7 @@ int main() {
     struct graphics_context *context = create_context(800, 800);
 	context->window_event_callback = &on_window_event;
 
-	prepare_object();
+	prepare_object("../model/head.obj", "../model/head_vcols.bmp", "../model/head_normals.bmp");
 
 	// Center camera on 0.0 and a bit back
 	scene.view = transform_3d_make_translation(context->width / 2.0, context->height / 2.0, 100.0);
@@ -51,18 +53,18 @@ int main() {
 	return 0;
 }
 
-void prepare_object() {
-	FILE *fp = fopen("model/head.obj", "r");
+void prepare_object(string file, string texture, string normal_map) {
+	FILE *fp = fopen(file, "r");
     if (!fp) {
-		fprintf(stderr, "Failed to open model file");
+		fputs("Failed to open model file", stderr);
 		abort();
     }
 
 	object.model = load_model(fp);
 	fclose(fp);
 
-	object.texture = load_texture("model/head_vcols.bmp");
-	object.normal_map = load_texture("model/head_normals.bmp");
+	object.texture = load_texture(texture);
+	object.normal_map = load_texture(normal_map);
 
 	object.transform = transform_3d_identity;
 	object.transform = transform_3d_scale(object.transform, 400.0, -400.0, -400.0); // Flip Y and Z axis to fit coordinate space
@@ -72,8 +74,8 @@ void prepare_object() {
 
 void render_object(struct object object,
 				   struct scene scene,
-				   struct vertex (*vertex_shader)(struct vertex_shader_input),
-				   rgb_color (*fragment_shader)(struct fragment_shader_input),
+				   vertex_shader (*vertex_shader)(struct vertex_shader_input),
+				   fragment_shader (*fragment_shader)(struct fragment_shader_input),
 				   struct graphics_context *context,
 				   rgb_color *wireframe_color)
 {
@@ -112,6 +114,8 @@ void render_object(struct object object,
 
 		struct fragment_shader_input input;
 		input.texture = &object.texture;
+		input.normal_map = &object.normal_map;
+		input.scene = scene;
 		
 		triangle(vertices, input, fragment_shader, context);
 

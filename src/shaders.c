@@ -33,7 +33,7 @@ vec3 apply_perspective(vec3 position, transform_3d view, float amount) {
     return result;
 }
 
-struct vertex goraud_shader(struct vertex_shader_input input) {
+vertex_shader goraud_shader(struct vertex_shader_input input) {
 	struct vertex v = input.vertex;
 
 	// Apply all transforms. Rotation, scaling, translation etc
@@ -64,7 +64,7 @@ struct vertex goraud_shader(struct vertex_shader_input input) {
 /**
  Works the same as the goraud_shader, but uses the face normal for light calculations
  */
-struct vertex flat_shader(struct vertex_shader_input input) {
+vertex_shader flat_shader(struct vertex_shader_input input) {
 	struct vertex v = input.vertex;
 	apply_transforms(&v, input.model, input.scene.view);
 	v.coordinate = apply_perspective(v.coordinate, input.scene.view, input.scene.perspective);
@@ -80,7 +80,7 @@ struct vertex flat_shader(struct vertex_shader_input input) {
 	return v;
 }
 
-rgb_color apply_texture_shader(struct fragment_shader_input input) {
+fragment_shader apply_texture_shader(struct fragment_shader_input input) {
 	rgb_color texture_color = texture_sample(*input.texture, input.interpolated_v.texture_coordinate);
 	rgb_color light_intensity = input.interpolated_v.color;
 	return multiply_colors(light_intensity, texture_color);

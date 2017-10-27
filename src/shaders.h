@@ -21,13 +21,17 @@ struct fragment_shader_input {
 	struct vertex interpolated_v;
 	struct texture *texture;
 	struct texture *normal_map;
+	struct scene scene;
 };
 
+typedef struct vertex vertex_shader;
+typedef rgb_color fragment_shader;
+
 // Vertex shaders
-struct vertex goraud_shader(struct vertex_shader_input input);
-struct vertex flat_shader(struct vertex_shader_input input);
+vertex_shader goraud_shader(struct vertex_shader_input input);
+vertex_shader flat_shader(struct vertex_shader_input input);
 
 // Fragment shaders
-rgb_color apply_texture_shader(struct fragment_shader_input input);
+fragment_shader apply_texture_shader(struct fragment_shader_input input);
 
 #endif
