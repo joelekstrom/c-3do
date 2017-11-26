@@ -124,7 +124,7 @@ void draw_line(vec2 p1, vec2 p2, struct graphics_context *context, rgb_color col
 	
     for (int i = 0; i < round(length); i++) {
 		double t = (double)i / length;
-		vec2 p = vec2_lerp(p1, p2, t);
+		vec2 p = lerp(p1, p2, t);
 
 		struct vec3 coordinate = {.x = p.x, .y = p.y, .z = -9000.0};
 		draw_fragment(coordinate, color, context);
@@ -142,10 +142,10 @@ void clear(struct graphics_context *context, rgb_color color) {
 
 struct vertex vertex_lerp(struct vertex a, struct vertex b, double value) {
 	struct vertex result;
-	result.coordinate = vec3_lerp(a.coordinate, b.coordinate, value);
+	result.coordinate = lerp(a.coordinate, b.coordinate, value);
 	result.color = interpolate_color(a.color, b.color, value);
-	result.normal = vec3_lerp(a.normal, b.normal, value);
-	result.texture_coordinate = vec2_lerp(a.texture_coordinate, b.texture_coordinate, value);
+	result.normal = lerp(a.normal, b.normal, value);
+	result.texture_coordinate = lerp(a.texture_coordinate, b.texture_coordinate, value);
 	return result;
 }
 

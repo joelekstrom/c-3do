@@ -1,5 +1,5 @@
-#ifndef GEOMETRY_H
-#define GEOMETRY_H
+#pragma once
+#include <inttypes.h>
 
 typedef struct vec2 {
 	double x;
@@ -32,9 +32,18 @@ vec3 vec3_add(vec3 v1, vec3 v2);
 vec3 vec3_scale(vec3 v, double s);
 
 // Linear interpolation
-double flerp(double a, double b, double value);
+#define define_primitive_lerp(TYPE) inline TYPE TYPE##_lerp(TYPE a, TYPE b, double t) {return (a + (b - a) * t);}
+define_primitive_lerp(double);
+define_primitive_lerp(uint8_t);
+
 vec2 vec2_lerp(vec2 a, vec2 b, double value);
 vec3 vec3_lerp(vec3 a, vec3 b, double value);
+
+#define lerp(A, B, T) _Generic(A,										\
+							   double: double_lerp,						\
+							   uint8_t: uint8_t_lerp,					\
+							   vec2: vec2_lerp,							\
+							   vec3: vec3_lerp)(A, B, T)
 
 // Transforms
 extern const transform_3d transform_3d_identity;
@@ -50,5 +59,3 @@ transform_3d transform_3d_translate(transform_3d t, double tx, double ty, double
 transform_3d transform_3d_scale(transform_3d t, double sx, double sy, double sz);
 transform_3d transform_3d_rotate_y_around_origin(transform_3d t, double angle);
 transform_3d transform_3d_rotate_x_around_origin(transform_3d t, double angle);
-
-#endif

@@ -5,12 +5,16 @@ compiler:
 - clang
 - gcc
 
+before_install:
+  - if [ "$CC" = "gcc" ]; then export CC="gcc-4.9"; fi
+
 addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
     packages:
     - libsdl2-dev
+    - gcc-4.9
 
 before_script:
   - mkdir bin

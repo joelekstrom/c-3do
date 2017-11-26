@@ -1,9 +1,10 @@
 #include "color.h"
+#include "geometry.h"
 
 rgb_color interpolate_color(rgb_color c1, rgb_color c2, double value) {
-	rgb_color result = { .r = c1.r + (c2.r - c1.r) * value,
-                         .g = c1.g + (c2.g - c1.g) * value,
-                         .b = c1.b + (c2.b - c1.b) * value };
+	rgb_color result = { .r = lerp(c1.r, c2.r, value),
+						 .g = lerp(c1.g, c2.g, value),
+                         .b = lerp(c1.b, c2.b, value)};
 	return result;
 }
 
