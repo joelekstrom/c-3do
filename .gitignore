@@ -1,4 +1,5 @@
 *.bmp
+*.o
 bin
 renderer
 .DS_Store

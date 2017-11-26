@@ -30,8 +30,7 @@ void render(struct graphics_context *context);
 int main() {
     struct graphics_context *context = create_context(800, 800);
 	context->window_event_callback = &on_window_event;
-
-	prepare_object("../model/head.obj", "../model/head_vcols.bmp", "../model/head_normals.bmp");
+	prepare_object("model/head.obj", "model/head_vcols.bmp", "model/head_normals.bmp");
 
 	// Center camera on 0.0 and a bit back
 	scene.view = transform_3d_make_translation(context->width / 2.0, context->height / 2.0, 100.0);

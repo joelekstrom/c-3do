@@ -13,12 +13,8 @@ addons:
     sources:
     - ubuntu-toolchain-r-test
     packages:
+    - libsdl2-image-dev
     - libsdl2-dev
     - gcc-4.9
 
-before_script:
-  - mkdir bin
-  - cd bin
-  - cmake ..
-
-script: make
+script: make SDL2_CFLAGS="`sdl2-config --cflags`" SDL2_LDLIBS="`sdl2-config --libs` -lSDL2_image"
