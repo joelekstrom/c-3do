@@ -73,8 +73,8 @@ void prepare_object(string file, string texture, string normal_map) {
 
 void render_object(struct object object,
 				   struct scene scene,
-				   vertex_shader (*vertex_shader)(struct vertex_shader_input),
-				   fragment_shader (*fragment_shader)(struct fragment_shader_input),
+				   vertex_shader *vertex_shader,
+				   fragment_shader *fragment_shader,
 				   struct graphics_context *context,
 				   rgb_color *wireframe_color)
 {

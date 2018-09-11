@@ -24,14 +24,14 @@ struct fragment_shader_input {
 	struct scene scene;
 };
 
-typedef struct vertex vertex_shader;
-typedef rgb_color fragment_shader;
+typedef struct vertex vertex_shader(struct vertex_shader_input input);
+typedef rgb_color fragment_shader(struct fragment_shader_input input);
 
 // Vertex shaders
-vertex_shader goraud_shader(struct vertex_shader_input input);
-vertex_shader flat_shader(struct vertex_shader_input input);
+vertex_shader goraud_shader;
+vertex_shader flat_shader;
 
 // Fragment shaders
-fragment_shader apply_texture_shader(struct fragment_shader_input input);
+fragment_shader apply_texture_shader;
 
 #endif
