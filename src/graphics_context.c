@@ -265,10 +265,8 @@ void triangle(struct vertex vertices[3],
 		double t = (split_point.coordinate.y - other_vertices[0].coordinate.y) / (other_vertices[1].coordinate.y - other_vertices[0].coordinate.y);
 		struct vertex new_point = vertex_lerp(other_vertices[0], other_vertices[1], t);
 		
-		// Call this function twice for two new, splitted triangles
-		for (int i = 0; i < 2; i++) {
-			struct vertex vertices[] = {new_point, split_point, other_vertices[i]};
-			triangle(vertices, shader_input, fragment_shader, context);
-		}
-	}
+		// Call this function for each of the splitted triangles
+		triangle((struct vertex[]){new_point, split_point, other_vertices[0]}, shader_input, fragment_shader, context);
+        triangle((struct vertex[]){new_point, split_point, other_vertices[1]}, shader_input, fragment_shader, context);
+    }
 }
