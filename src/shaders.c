@@ -1,20 +1,16 @@
 #include "shaders.h"
 #include "textures.h"
 
-/**
- Applies model and view transforms to a vectors coordinate and normal vector
- */
-void apply_transforms(struct vertex *v, transform_3d model, transform_3d view) {
-	transform_3d transform = transform_3d_multiply(model, view);
-	v->coordinate = transform_3d_apply(v->coordinate, transform);
-
+vec3 transform_normal(vec3 normal, transform_3d transform) {
 	// Remove translations from the matrix so we only apply scale + rotation to
 	// the normals. This is not correct for skewed objects. The correct solution
 	// for calculating the normal would be to use an inverse transpose matrix
 	transform.tx = 1.0;
 	transform.ty = 1.0;
-	transform.tz = 1.0;	
-	v->normal = vec3_scale(vec3_unit(transform_3d_apply(v->normal, transform)), -1.0);
+	transform.tz = 1.0;
+
+	// Re-normalize and invert the normal since it won't be normalized after scales etc
+	return vec3_scale(vec3_unit(transform_3d_apply(normal, transform)), -1.0);;
 }
 
 /**
@@ -37,7 +33,9 @@ struct vertex goraud_shader(struct vertex_shader_input input) {
 	struct vertex v = input.vertex;
 
 	// Apply all transforms. Rotation, scaling, translation etc
-	apply_transforms(&v, input.model, input.scene.view);
+	transform_3d transform = transform_3d_multiply(input.model, input.scene.view);
+	v.coordinate = transform_3d_apply(v.coordinate, transform);
+	v.normal = transform_normal(v.normal, transform);
 
 	// Apply perspective (move x and y further to/away from the middle
 	// depending on the Z value, to give the illusion of depth)
@@ -66,12 +64,16 @@ struct vertex goraud_shader(struct vertex_shader_input input) {
  */
 struct vertex flat_shader(struct vertex_shader_input input) {
 	struct vertex v = input.vertex;
-	apply_transforms(&v, input.model, input.scene.view);
+	transform_3d transform = transform_3d_multiply(input.model, input.scene.view);
+	v.coordinate = transform_3d_apply(v.coordinate, transform);
+	v.normal = transform_normal(v.normal, transform);
+	vec3 face_normal = transform_normal(input.face_normal, transform);
+
 	v.coordinate = apply_perspective(v.coordinate, input.scene.view, input.scene.perspective);
 	v.color = input.scene.ambient_light;
 	for (int i = 0; i < input.scene.directional_light_count; i++) {
 		struct directional_light *light = &input.scene.directional_lights[i];
-		double dot_product = dot_product_3d(input.face_normal, vec3_unit(light->direction));
+		double dot_product = dot_product_3d(face_normal, vec3_unit(light->direction));
 		if (dot_product > 0.0) {
 			rgb_color light_color = scale_color(light->intensity, dot_product);
 			v.color = add_color(v.color, light_color);
