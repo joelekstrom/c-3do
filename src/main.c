@@ -23,7 +23,7 @@ struct object {
 struct object object;
 struct scene scene;
 
-void prepare_object();
+void prepare_object(string file, string texture, string normal_map);
 void on_window_event(struct graphics_context *context, SDL_Event event);
 void render(struct graphics_context *context);
 

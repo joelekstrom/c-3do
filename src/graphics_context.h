@@ -32,7 +32,7 @@ void clear(struct graphics_context *context, rgb_color color);
  */
 void triangle(struct vertex vertices[3],
 			  struct fragment_shader_input shader_input,
-			  rgb_color (*fragment_shader)(struct fragment_shader_input input),
+			  fragment_shader *fragment_shader,
 			  struct graphics_context *context);
 
 #endif

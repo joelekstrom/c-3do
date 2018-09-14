@@ -33,8 +33,8 @@ vec3 vec3_scale(vec3 v, double s);
 
 // Linear interpolation
 #define define_primitive_lerp(TYPE) inline TYPE TYPE##_lerp(TYPE a, TYPE b, double t) {return (a + (b - a) * t);}
-define_primitive_lerp(double);
-define_primitive_lerp(uint8_t);
+define_primitive_lerp(double)
+define_primitive_lerp(uint8_t)
 
 vec2 vec2_lerp(vec2 a, vec2 b, double value);
 vec3 vec3_lerp(vec3 a, vec3 b, double value);
